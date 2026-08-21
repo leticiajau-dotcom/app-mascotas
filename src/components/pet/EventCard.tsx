@@ -1,32 +1,26 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import {
-  Bell,
-  BellOff,
   Bug,
   CheckCircle2,
   Circle,
   LucideIcon,
   Pill,
-  Scale,
-  Scissors,
+  ShoppingBag,
   Stethoscope,
   Syringe,
 } from "lucide-react-native";
 import Card from "@/components/common/Card";
 import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
-import { EVENT_TYPE_LABELS, MedicalEvent, MedicalEventType } from "@/types/event";
+import { EventCategory, MedicalEvent } from "@/types/event";
 import { formatDate, isOverdue } from "@/utils/dateUtils";
 
-const ICONS: Record<MedicalEventType, LucideIcon> = {
-  vaccine: Syringe,
-  deworming: Bug,
-  vet_visit: Stethoscope,
-  medication: Pill,
-  grooming: Scissors,
-  weight: Scale,
-  other: Circle,
+const ICONS: Record<EventCategory, LucideIcon> = {
+  Vacuna: Syringe,
+  Desparasitante: Bug,
+  Medicamento: Pill,
+  "Turno Médico": Stethoscope,
 };
 
 interface EventCardProps {
@@ -36,8 +30,12 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event, onPress, onToggleComplete }: EventCardProps) {
-  const Icon = ICONS[event.type];
+  const Icon = ICONS[event.category];
   const overdue = !event.completed && isOverdue(event.date);
+
+  function handleOpenAffiliateLink() {
+    if (event.affiliateUrl) Linking.openURL(event.affiliateUrl);
+  }
 
   return (
     <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
@@ -51,17 +49,18 @@ export default function EventCard({ event, onPress, onToggleComplete }: EventCar
             {event.title}
           </Text>
           <Text style={styles.meta}>
-            {EVENT_TYPE_LABELS[event.type]} · {formatDate(event.date)}
+            {event.category} · {formatDate(event.date)}
+            {event.time ? ` · ${event.time}` : ""}
           </Text>
           {overdue ? <Text style={styles.overdueLabel}>Vencido</Text> : null}
         </View>
 
         <View style={styles.actions}>
-          {event.reminderEnabled ? (
-            <Bell size={16} color={Colors.secondary} />
-          ) : (
-            <BellOff size={16} color={Colors.textMuted} />
-          )}
+          {event.affiliateUrl ? (
+            <TouchableOpacity onPress={handleOpenAffiliateLink} hitSlop={8}>
+              <ShoppingBag size={18} color={Colors.secondary} />
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity onPress={onToggleComplete} hitSlop={8}>
             {event.completed ? (
               <CheckCircle2 size={22} color={Colors.success} />

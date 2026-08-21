@@ -7,19 +7,10 @@ import Input from "@/components/common/Input";
 import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useEvents } from "@/hooks/useEvents";
-import { EVENT_TYPE_LABELS, MedicalEventType } from "@/types/event";
+import { EVENT_CATEGORIES, EventCategory } from "@/types/event";
 import { HomeStackParamList } from "@/types/navigation";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "AddEventModal">;
-
-const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as MedicalEventType[];
-
-const REMINDER_OFFSETS = [
-  { label: "El mismo día", days: 0 },
-  { label: "1 día antes", days: 1 },
-  { label: "3 días antes", days: 3 },
-  { label: "1 semana antes", days: 7 },
-];
 
 function toDateInputValue(iso: string): string {
   return iso.slice(0, 10);
@@ -29,8 +20,12 @@ function parseDateInput(value: string): Date | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!match) return null;
   const [, year, month, day] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day), 9, 0, 0);
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isValidTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value.trim());
 }
 
 export default function AddEventModal({ route, navigation }: Props) {
@@ -43,24 +38,20 @@ export default function AddEventModal({ route, navigation }: Props) {
     [events, eventId]
   );
 
-  const [type, setType] = useState<MedicalEventType>("vaccine");
+  const [category, setCategory] = useState<EventCategory>("Vacuna");
   const [title, setTitle] = useState("");
   const [dateInput, setDateInput] = useState(toDateInputValue(new Date().toISOString()));
-  const [notes, setNotes] = useState("");
-  const [reminderDays, setReminderDays] = useState<number | null>(null);
+  const [time, setTime] = useState("");
+  const [affiliateUrl, setAffiliateUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!existingEvent) return;
-    setType(existingEvent.type);
+    setCategory(existingEvent.category);
     setTitle(existingEvent.title);
     setDateInput(toDateInputValue(existingEvent.date));
-    setNotes(existingEvent.notes ?? "");
-
-    if (existingEvent.reminderEnabled && existingEvent.reminderDate) {
-      const diffMs = new Date(existingEvent.date).getTime() - new Date(existingEvent.reminderDate).getTime();
-      setReminderDays(Math.round(diffMs / (24 * 60 * 60 * 1000)));
-    }
+    setTime(existingEvent.time ?? "");
+    setAffiliateUrl(existingEvent.affiliateUrl ?? "");
   }, [existingEvent]);
 
   async function handleSave() {
@@ -72,35 +63,27 @@ export default function AddEventModal({ route, navigation }: Props) {
       return;
     }
 
-    const reminderEnabled = reminderDays !== null;
-    const reminderDate = reminderEnabled
-      ? new Date(eventDate.getTime() - (reminderDays as number) * 24 * 60 * 60 * 1000).toISOString()
-      : undefined;
+    if (time.trim() && !isValidTime(time)) {
+      Alert.alert("Hora inválida", "Ingresa la hora en formato HH:MM (24 horas).");
+      return;
+    }
 
     setSaving(true);
     try {
+      const payload = {
+        petId,
+        category,
+        title: title.trim(),
+        date: eventDate.toISOString(),
+        time: time.trim() || undefined,
+        completed: existingEvent?.completed ?? false,
+        affiliateUrl: affiliateUrl.trim() || undefined,
+      };
+
       if (existingEvent) {
-        await updateEvent(existingEvent.id, {
-          petId,
-          type,
-          title: title.trim(),
-          date: eventDate.toISOString(),
-          notes: notes.trim() || undefined,
-          reminderEnabled,
-          reminderDate,
-          completed: existingEvent.completed,
-        });
+        await updateEvent(existingEvent.id, payload);
       } else {
-        await addEvent({
-          petId,
-          type,
-          title: title.trim(),
-          date: eventDate.toISOString(),
-          notes: notes.trim() || undefined,
-          reminderEnabled,
-          reminderDate,
-          completed: false,
-        });
+        await addEvent(payload);
       }
       navigation.goBack();
     } finally {
@@ -136,16 +119,16 @@ export default function AddEventModal({ route, navigation }: Props) {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>{existingEvent ? "Editar evento" : "Nuevo evento"}</Text>
 
-        <Text style={styles.fieldLabel}>Tipo de evento</Text>
+        <Text style={styles.fieldLabel}>Categoría</Text>
         <View style={styles.chipsRow}>
-          {EVENT_TYPES.map((option) => (
+          {EVENT_CATEGORIES.map((option) => (
             <TouchableOpacity
               key={option}
-              style={[styles.chip, type === option && styles.chipSelected]}
-              onPress={() => setType(option)}
+              style={[styles.chip, category === option && styles.chipSelected]}
+              onPress={() => setCategory(option)}
             >
-              <Text style={[styles.chipText, type === option && styles.chipTextSelected]}>
-                {EVENT_TYPE_LABELS[option]}
+              <Text style={[styles.chipText, category === option && styles.chipTextSelected]}>
+                {option}
               </Text>
             </TouchableOpacity>
           ))}
@@ -167,39 +150,21 @@ export default function AddEventModal({ route, navigation }: Props) {
         />
 
         <Input
-          label="Notas (opcional)"
-          placeholder="Detalles adicionales, dosis, veterinario, etc."
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          numberOfLines={3}
-          style={styles.notesInput}
+          label="Hora (opcional, HH:MM)"
+          placeholder="14:30"
+          value={time}
+          onChangeText={setTime}
+          keyboardType="numbers-and-punctuation"
         />
 
-        <Text style={styles.fieldLabel}>Recordatorio</Text>
-        <View style={styles.chipsRow}>
-          <TouchableOpacity
-            style={[styles.chip, reminderDays === null && styles.chipSelected]}
-            onPress={() => setReminderDays(null)}
-          >
-            <Text style={[styles.chipText, reminderDays === null && styles.chipTextSelected]}>
-              Sin recordatorio
-            </Text>
-          </TouchableOpacity>
-          {REMINDER_OFFSETS.map((option) => (
-            <TouchableOpacity
-              key={option.days}
-              style={[styles.chip, reminderDays === option.days && styles.chipSelected]}
-              onPress={() => setReminderDays(option.days)}
-            >
-              <Text
-                style={[styles.chipText, reminderDays === option.days && styles.chipTextSelected]}
-              >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <Input
+          label="Link de compra (opcional)"
+          placeholder="https://tutienda.com/producto"
+          value={affiliateUrl}
+          onChangeText={setAffiliateUrl}
+          autoCapitalize="none"
+          keyboardType="url"
+        />
 
         <Button
           label={existingEvent ? "Guardar cambios" : "Crear evento"}
@@ -255,10 +220,6 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: Colors.white,
     fontWeight: "600",
-  },
-  notesInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
   },
   saveButton: {
     marginTop: Spacing.md,

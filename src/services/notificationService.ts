@@ -42,16 +42,21 @@ export async function registerForLocalNotificationsAsync(): Promise<boolean> {
 }
 
 interface ScheduleReminderParams {
+  /** Se usa el id del propio MedicalEvent, así no hace falta guardar un
+   * identificador de notificación aparte: programar y cancelar usan la
+   * misma clave. */
+  identifier: string;
   title: string;
   body: string;
   date: Date;
 }
 
 /**
- * Programa una notificación local para un evento médico. Devuelve el
- * identificador para poder cancelarla/reprogramarla más adelante.
+ * Programa (o reprograma) el recordatorio local de un evento médico,
+ * usando su `id` como identificador de la notificación.
  */
 export async function scheduleEventReminder({
+  identifier,
   title,
   body,
   date,
@@ -61,7 +66,8 @@ export async function scheduleEventReminder({
     return null;
   }
 
-  const identifier = await Notifications.scheduleNotificationAsync({
+  return Notifications.scheduleNotificationAsync({
+    identifier,
     content: {
       title,
       body,
@@ -69,14 +75,12 @@ export async function scheduleEventReminder({
     },
     trigger: { date },
   });
-
-  return identifier;
 }
 
-export async function cancelEventReminder(notificationId: string | null | undefined): Promise<void> {
-  if (!notificationId) return;
+/** Cancela el recordatorio de un evento médico por su id, si existiera uno. */
+export async function cancelEventReminder(eventId: string): Promise<void> {
   try {
-    await Notifications.cancelScheduledNotificationAsync(notificationId);
+    await Notifications.cancelScheduledNotificationAsync(eventId);
   } catch (error) {
     console.warn("[notifications] No se pudo cancelar el recordatorio", error);
   }

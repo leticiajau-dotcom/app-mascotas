@@ -10,6 +10,7 @@ import { storage } from "@/api/storage";
 import { cancelEventReminder, scheduleEventReminder } from "@/services/notificationService";
 import { EmergencyInfo, NewPetInput, Pet } from "@/types/pet";
 import { MedicalEvent, NewMedicalEventInput } from "@/types/event";
+import { combineDateAndTime } from "@/utils/dateUtils";
 import { generateId } from "@/utils/formatters";
 import { useAuth } from "./AuthContext";
 
@@ -114,7 +115,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
   const deletePet = useCallback(
     async (petId: string) => {
       const eventsToCancel = events.filter((event) => event.petId === petId);
-      await Promise.all(eventsToCancel.map((event) => cancelEventReminder(event.notificationId)));
+      await Promise.all(eventsToCancel.map((event) => cancelEventReminder(event.id)));
 
       await persistPets(pets.filter((pet) => pet.id !== petId));
       await persistEvents(events.filter((event) => event.petId !== petId));
@@ -129,27 +130,26 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
     [events]
   );
 
+  // El recordatorio de un evento se programa (o cancela) usando su propio
+  // `id` como identificador de la notificación local — así no hace falta
+  // guardar un notificationId aparte. Solo se recuerdan los eventos aún no
+  // completados.
+  async function syncEventReminder(event: MedicalEvent): Promise<void> {
+    await cancelEventReminder(event.id);
+    if (event.completed) return;
+
+    await scheduleEventReminder({
+      identifier: event.id,
+      title: `Recordatorio: ${event.title}`,
+      body: `Es hora de "${event.title}" (${event.category}) para tu mascota.`,
+      date: combineDateAndTime(event.date, event.time),
+    });
+  }
+
   const addEvent = useCallback(
     async (input: NewMedicalEventInput) => {
-      let notificationId: string | null = null;
-
-      if (input.reminderEnabled && input.reminderDate) {
-        notificationId = await scheduleEventReminder({
-          title: `Recordatorio: ${input.title}`,
-          body: `Es hora de registrar "${input.title}" para tu mascota.`,
-          date: new Date(input.reminderDate),
-        });
-      }
-
-      const now = new Date().toISOString();
-      const event: MedicalEvent = {
-        ...input,
-        id: generateId(),
-        notificationId,
-        createdAt: now,
-        updatedAt: now,
-      };
-
+      const event: MedicalEvent = { ...input, id: generateId() };
+      await syncEventReminder(event);
       await persistEvents([...events, event]);
       return event;
     },
@@ -161,31 +161,10 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       const existing = events.find((event) => event.id === eventId);
       if (!existing) return;
 
-      let notificationId = existing.notificationId;
-      const reminderChanged =
-        updates.reminderEnabled !== undefined || updates.reminderDate !== undefined;
+      const updated: MedicalEvent = { ...existing, ...updates };
+      await syncEventReminder(updated);
 
-      if (reminderChanged) {
-        await cancelEventReminder(existing.notificationId);
-        notificationId = null;
-
-        const willRemind = updates.reminderEnabled ?? existing.reminderEnabled;
-        const reminderDate = updates.reminderDate ?? existing.reminderDate;
-
-        if (willRemind && reminderDate) {
-          notificationId = await scheduleEventReminder({
-            title: `Recordatorio: ${updates.title ?? existing.title}`,
-            body: `Es hora de registrar "${updates.title ?? existing.title}" para tu mascota.`,
-            date: new Date(reminderDate),
-          });
-        }
-      }
-
-      const next = events.map((event) =>
-        event.id === eventId
-          ? { ...event, ...updates, notificationId, updatedAt: new Date().toISOString() }
-          : event
-      );
+      const next = events.map((event) => (event.id === eventId ? updated : event));
       await persistEvents(next);
     },
     [events, persistEvents]
@@ -193,8 +172,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
 
   const deleteEvent = useCallback(
     async (eventId: string) => {
-      const existing = events.find((event) => event.id === eventId);
-      if (existing) await cancelEventReminder(existing.notificationId);
+      await cancelEventReminder(eventId);
       await persistEvents(events.filter((event) => event.id !== eventId));
     },
     [events, persistEvents]
@@ -202,11 +180,13 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
 
   const toggleEventComplete = useCallback(
     async (eventId: string) => {
-      const next = events.map((event) =>
-        event.id === eventId
-          ? { ...event, completed: !event.completed, updatedAt: new Date().toISOString() }
-          : event
-      );
+      const existing = events.find((event) => event.id === eventId);
+      if (!existing) return;
+
+      const updated: MedicalEvent = { ...existing, completed: !existing.completed };
+      await syncEventReminder(updated);
+
+      const next = events.map((event) => (event.id === eventId ? updated : event));
       await persistEvents(next);
     },
     [events, persistEvents]

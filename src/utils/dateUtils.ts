@@ -53,6 +53,24 @@ export function calculateAge(birthDateIso: string | undefined): string {
   }`;
 }
 
+/**
+ * Combina la fecha (día) de un evento con su hora opcional ("HH:MM") para
+ * obtener el instante exacto en el que debe dispararse su recordatorio.
+ * Sin hora especificada, usa las 9:00 AM como valor por defecto.
+ */
+export function combineDateAndTime(dateIso: string, time?: string): Date {
+  const base = new Date(dateIso);
+  const match = time ? /^(\d{1,2}):(\d{2})$/.exec(time.trim()) : null;
+
+  if (match) {
+    base.setHours(Number(match[1]), Number(match[2]), 0, 0);
+  } else {
+    base.setHours(9, 0, 0, 0);
+  }
+
+  return base;
+}
+
 export function isUpcoming(isoDate: string, withinDays = 30): boolean {
   const target = new Date(isoDate).getTime();
   const now = Date.now();

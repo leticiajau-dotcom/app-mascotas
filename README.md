@@ -56,9 +56,11 @@ src/
 ### Modelo de datos
 
 - **Pet**: nombre, especie (`Dog` | `Cat` | `Other`), raza, fecha de nacimiento, peso, foto, número de chip.
-- **MedicalEvent**: vacuna, desparasitación, consulta veterinaria, medicación,
-  peluquería, control de peso u otro. Incluye recordatorio opcional que
-  programa una notificación local (`expo-notifications`).
+- **MedicalEvent**: categoría (`Vacuna` | `Desparasitante` | `Medicamento` |
+  `Turno Médico`), título, fecha y hora opcional. Todo evento no completado
+  programa automáticamente una notificación local (`expo-notifications`).
+  Incluye un `affiliateUrl` opcional, preparado para futura monetización
+  (link de compra del insumo asociado al evento).
 - **EmergencyInfo**: contacto del dueño, veterinario y alergias/condiciones —
   pensado para consultarse rápido en una urgencia.
 
@@ -73,10 +75,12 @@ listo para sincronizar estos mismos datos contra Postgres — ver
 
 ### Notificaciones
 
-`useNotifications` solicita permisos al iniciar la app. Al crear/editar un
-evento médico con recordatorio activado, `PetContext` programa una
-notificación local vía `services/notificationService.ts` y guarda su
-`notificationId` para poder cancelarla si el evento se edita o elimina.
+`useNotifications` solicita permisos al iniciar la app. Al crear, editar,
+completar o eliminar un evento médico, `PetContext` sincroniza su
+recordatorio vía `services/notificationService.ts`, programando (o
+cancelando) la notificación local usando el propio `id` del evento como
+identificador — así no hace falta guardar un `notificationId` aparte. Solo
+los eventos no completados quedan con recordatorio activo.
 
 ### Exportar historial a PDF
 

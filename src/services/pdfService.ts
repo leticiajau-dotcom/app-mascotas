@@ -1,7 +1,7 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Pet } from "@/types/pet";
-import { EVENT_TYPE_LABELS, MedicalEvent } from "@/types/event";
+import { MedicalEvent } from "@/types/event";
 import { calculateAge, formatDate } from "@/utils/dateUtils";
 import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
 
@@ -11,9 +11,9 @@ function buildHtml(pet: Pet, events: MedicalEvent[]): string {
       (event) => `
         <tr>
           <td>${formatDate(event.date)}</td>
-          <td>${EVENT_TYPE_LABELS[event.type]}</td>
+          <td>${event.time ?? "-"}</td>
+          <td>${event.category}</td>
           <td>${event.title}</td>
-          <td>${event.notes ?? "-"}</td>
           <td>${event.completed ? "Completado" : "Pendiente"}</td>
         </tr>`
     )
@@ -63,9 +63,9 @@ function buildHtml(pet: Pet, events: MedicalEvent[]): string {
           <thead>
             <tr>
               <th>Fecha</th>
-              <th>Tipo</th>
+              <th>Hora</th>
+              <th>Categoría</th>
               <th>Título</th>
-              <th>Notas</th>
               <th>Estado</th>
             </tr>
           </thead>

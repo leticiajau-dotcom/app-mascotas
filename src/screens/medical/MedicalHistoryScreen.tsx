@@ -11,25 +11,22 @@ import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
 import { exportMedicalHistoryToPdf } from "@/services/pdfService";
-import { EVENT_TYPE_LABELS, MedicalEventType } from "@/types/event";
+import { EVENT_CATEGORIES, EventCategory } from "@/types/event";
 import { sortByDateDesc } from "@/utils/dateUtils";
 
-const FILTERS: Array<{ label: string; value: MedicalEventType | "all" }> = [
+const FILTERS: Array<{ label: string; value: EventCategory | "all" }> = [
   { label: "Todos", value: "all" },
-  ...(Object.keys(EVENT_TYPE_LABELS) as MedicalEventType[]).map((type) => ({
-    label: EVENT_TYPE_LABELS[type],
-    value: type,
-  })),
+  ...EVENT_CATEGORIES.map((category) => ({ label: category, value: category })),
 ];
 
 export default function MedicalHistoryScreen() {
   const { selectedPet } = usePets();
   const { events, toggleEventComplete } = useEvents(selectedPet?.id);
-  const [filter, setFilter] = useState<MedicalEventType | "all">("all");
+  const [filter, setFilter] = useState<EventCategory | "all">("all");
   const [exporting, setExporting] = useState(false);
 
   const filteredEvents = useMemo(() => {
-    const base = filter === "all" ? events : events.filter((event) => event.type === filter);
+    const base = filter === "all" ? events : events.filter((event) => event.category === filter);
     return sortByDateDesc(base);
   }, [events, filter]);
 

@@ -20,15 +20,14 @@ create table if not exists public.pets (
 create table if not exists public.medical_events (
   id uuid primary key default gen_random_uuid(),
   pet_id uuid not null references public.pets (id) on delete cascade,
-  type text not null check (
-    type in ('vaccine', 'deworming', 'vet_visit', 'medication', 'grooming', 'weight', 'other')
+  category text not null check (
+    category in ('Vacuna', 'Desparasitante', 'Medicamento', 'Turno Médico')
   ),
   title text not null,
   date timestamptz not null,
-  notes text,
-  reminder_enabled boolean not null default false,
-  reminder_date timestamptz,
+  time text,
   completed boolean not null default false,
+  affiliate_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
