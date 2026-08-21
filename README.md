@@ -7,7 +7,7 @@ información de emergencia.
 
 ## Stack
 
-- Expo SDK 51, React Native 0.74, TypeScript
+- Expo SDK 54, React Native 0.81, React 19, TypeScript
 - `@react-navigation/native` + `bottom-tabs` + `native-stack`
 - `expo-notifications` (recordatorios locales)
 - `@react-native-async-storage/async-storage` (persistencia offline-first)

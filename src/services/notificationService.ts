@@ -75,7 +75,7 @@ export async function schedulePetReminder(
       data: dataPayload ?? {},
       sound: true,
     },
-    trigger: { date: triggerDate },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
   });
 }
 
