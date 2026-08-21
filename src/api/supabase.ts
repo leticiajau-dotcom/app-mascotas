@@ -4,8 +4,11 @@ import Constants from "expo-constants";
 import { createClient } from "@supabase/supabase-js";
 
 // Las credenciales se leen desde app.json > expo.extra (ver .env.example para
-// generar tus propios valores) y se inyectan en build time. Nunca hardcodees
-// claves reales en el repositorio.
+// generar tus propios valores) y se inyectan en build time. La "anon" /
+// "publishable" key es pública por diseño (termina embebida en cualquier
+// build de la app) — la seguridad real la dan las políticas de Row Level
+// Security en supabase/schema.sql. Nunca pongas acá la "service_role" /
+// "secret" key: esa sí es privada y nunca debe viajar al cliente ni al repo.
 const extra = Constants.expoConfig?.extra ?? {};
 
 const rawSupabaseUrl = (extra.supabaseUrl as string) || process.env.SUPABASE_URL || "";

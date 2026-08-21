@@ -43,8 +43,8 @@
       ]
     ],
     "extra": {
-      "supabaseUrl": "SUPABASE_URL_PLACEHOLDER",
-      "supabaseAnonKey": "SUPABASE_ANON_KEY_PLACEHOLDER"
+      "supabaseUrl": "https://pxkdtgbvxyrxcgjrrary.supabase.co",
+      "supabaseAnonKey": "sb_publishable_1Unwtjqf1YKHlg7QvHMirQ_FhbOtoX8"
     }
   }
 }
