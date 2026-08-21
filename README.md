@@ -113,3 +113,16 @@ WhatsApp, Mail o cualquier otra app instalada.
 2. Conectar `StoreScreen` a un catálogo real y flujo de checkout.
 3. Selector de fecha nativo (`@react-native-community/datetimepicker`) en
    lugar del input de texto `AAAA-MM-DD` usado en el MVP.
+
+## Preview en el navegador (opcional)
+
+El proyecto también corre en modo web (útil para previsualizar sin un
+teléfono a mano), gracias a `react-native-web`, `react-dom` y
+`@expo/metro-runtime`:
+
+```bash
+npx expo start --web
+```
+
+Esto es un plus para desarrollo rápido — el target principal sigue siendo
+iOS/Android vía Expo Go o un build nativo.
