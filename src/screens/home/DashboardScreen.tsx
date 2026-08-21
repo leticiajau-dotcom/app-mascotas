@@ -26,7 +26,7 @@ import { HomeStackParamList } from "@/types/navigation";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
 
-const SPECIES_OPTIONS: PetSpecies[] = ["dog", "cat", "rabbit", "bird", "other"];
+const SPECIES_OPTIONS: PetSpecies[] = ["Dog", "Cat", "Other"];
 
 export default function DashboardScreen({ navigation }: Props) {
   const { pets, selectedPet, selectPet, addPet } = usePets();
@@ -125,7 +125,7 @@ function AddPetModal({
   onSubmit: ReturnType<typeof usePets>["addPet"];
 }) {
   const [name, setName] = useState("");
-  const [species, setSpecies] = useState<PetSpecies>("dog");
+  const [species, setSpecies] = useState<PetSpecies>("Dog");
   const [breed, setBreed] = useState("");
 
   async function handleSubmit() {
@@ -134,11 +134,10 @@ function AddPetModal({
       name: name.trim(),
       species,
       breed: breed.trim() || undefined,
-      sex: "unknown",
     });
     setName("");
     setBreed("");
-    setSpecies("dog");
+    setSpecies("Dog");
     onClose();
   }
 

@@ -55,7 +55,7 @@ src/
 
 ### Modelo de datos
 
-- **Pet**: nombre, especie, raza, sexo, fecha de nacimiento, peso, foto, chip.
+- **Pet**: nombre, especie (`Dog` | `Cat` | `Other`), raza, fecha de nacimiento, peso, foto, número de chip.
 - **MedicalEvent**: vacuna, desparasitación, consulta veterinaria, medicación,
   peluquería, control de peso u otro. Incluye recordatorio opcional que
   programa una notificación local (`expo-notifications`).

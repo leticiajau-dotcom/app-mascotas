@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { usePetContext } from "@/context/PetContext";
 import { usePets } from "@/hooks/usePets";
 import { calculateAge, formatDateShort } from "@/utils/dateUtils";
-import { SPECIES_LABELS, SEX_LABELS, formatWeight } from "@/utils/formatters";
+import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
 
 /**
  * Perfil de la mascota + tarjeta de emergencia: datos que un cuidador
@@ -84,9 +84,8 @@ export default function ProfileScreen() {
             <PetHeader pet={selectedPet} />
             <View style={styles.petDetailsGrid}>
               <DetailItem label="Especie" value={SPECIES_LABELS[selectedPet.species]} />
-              <DetailItem label="Sexo" value={SEX_LABELS[selectedPet.sex]} />
               <DetailItem label="Edad" value={calculateAge(selectedPet.birthDate)} />
-              <DetailItem label="Peso" value={formatWeight(selectedPet.weightKg)} />
+              <DetailItem label="Peso" value={formatWeight(selectedPet.weight)} />
               <DetailItem label="Nacimiento" value={formatDateShort(selectedPet.birthDate)} />
               <DetailItem label="Raza" value={selectedPet.breed ?? "-"} />
             </View>

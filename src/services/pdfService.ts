@@ -55,7 +55,7 @@ function buildHtml(pet: Pet, events: MedicalEvent[]): string {
           </div>
           <div class="info-item">
             <div class="info-label">Peso</div>
-            <div class="info-value">${formatWeight(pet.weightKg)}</div>
+            <div class="info-value">${formatWeight(pet.weight)}</div>
           </div>
         </div>
 

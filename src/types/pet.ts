@@ -1,22 +1,15 @@
-export type PetSpecies = "dog" | "cat" | "bird" | "rabbit" | "other";
-
-export type PetSex = "male" | "female" | "unknown";
-
 export interface Pet {
   id: string;
-  ownerId: string;
   name: string;
-  species: PetSpecies;
+  species: "Dog" | "Cat" | "Other";
   breed?: string;
-  sex: PetSex;
-  birthDate?: string; // ISO date string
-  weightKg?: number;
-  photoUri?: string;
-  microchipId?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  birthDate?: string;
+  weight?: number;
+  chipNumber?: string;
+  photoUrl?: string;
 }
+
+export type PetSpecies = Pet["species"];
 
 export interface EmergencyInfo {
   petId: string;
@@ -30,4 +23,4 @@ export interface EmergencyInfo {
   bloodType?: string;
 }
 
-export type NewPetInput = Omit<Pet, "id" | "ownerId" | "createdAt" | "updatedAt">;
+export type NewPetInput = Omit<Pet, "id">;

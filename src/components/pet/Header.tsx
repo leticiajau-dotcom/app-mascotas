@@ -21,8 +21,8 @@ export default function PetHeader({ pet, onPress }: PetHeaderProps) {
       disabled={!onPress}
     >
       <View style={styles.avatar}>
-        {pet?.photoUri ? (
-          <Image source={{ uri: pet.photoUri }} style={styles.avatarImage} />
+        {pet?.photoUrl ? (
+          <Image source={{ uri: pet.photoUrl }} style={styles.avatarImage} />
         ) : (
           <Text style={styles.avatarText}>
             {pet ? initials(pet.name) : <PawPrint size={20} color={Colors.white} />}

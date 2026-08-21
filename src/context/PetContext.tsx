@@ -92,26 +92,20 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
 
   const addPet = useCallback(
     async (input: NewPetInput) => {
-      const now = new Date().toISOString();
       const pet: Pet = {
         ...input,
         id: generateId(),
-        ownerId: userId,
-        createdAt: now,
-        updatedAt: now,
       };
       await persistPets([...pets, pet]);
       setSelectedPetId((current) => current ?? pet.id);
       return pet;
     },
-    [pets, persistPets, userId]
+    [pets, persistPets]
   );
 
   const updatePet = useCallback(
     async (petId: string, updates: Partial<NewPetInput>) => {
-      const next = pets.map((pet) =>
-        pet.id === petId ? { ...pet, ...updates, updatedAt: new Date().toISOString() } : pet
-      );
+      const next = pets.map((pet) => (pet.id === petId ? { ...pet, ...updates } : pet));
       await persistPets(next);
     },
     [pets, persistPets]

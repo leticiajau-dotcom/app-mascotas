@@ -1,24 +1,16 @@
-import { PetSpecies, PetSex } from "@/types/pet";
+import { PetSpecies } from "@/types/pet";
 
 export const SPECIES_LABELS: Record<PetSpecies, string> = {
-  dog: "Perro",
-  cat: "Gato",
-  bird: "Ave",
-  rabbit: "Conejo",
-  other: "Otro",
+  Dog: "Perro",
+  Cat: "Gato",
+  Other: "Otro",
 };
 
-export const SEX_LABELS: Record<PetSex, string> = {
-  male: "Macho",
-  female: "Hembra",
-  unknown: "Desconocido",
-};
-
-export function formatWeight(weightKg: number | undefined): string {
-  if (weightKg === undefined || weightKg === null || Number.isNaN(weightKg)) {
+export function formatWeight(weight: number | undefined): string {
+  if (weight === undefined || weight === null || Number.isNaN(weight)) {
     return "Sin registrar";
   }
-  return `${weightKg.toFixed(1)} kg`;
+  return `${weight.toFixed(1)} kg`;
 }
 
 export function initials(name: string): string {
