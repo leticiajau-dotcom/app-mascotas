@@ -28,6 +28,11 @@ function isValidTime(value: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value.trim());
 }
 
+const REMINDER_OFFSETS = [
+  { label: "Mismo día", days: 0 },
+  { label: "3 días antes", days: 3 },
+];
+
 export default function AddEventModal({ route, navigation }: Props) {
   const petId = route.params?.petId;
   const eventId = route.params?.eventId;
@@ -43,6 +48,7 @@ export default function AddEventModal({ route, navigation }: Props) {
   const [dateInput, setDateInput] = useState(toDateInputValue(new Date().toISOString()));
   const [time, setTime] = useState("");
   const [affiliateUrl, setAffiliateUrl] = useState("");
+  const [reminderOffsetDays, setReminderOffsetDays] = useState(REMINDER_OFFSETS[0].days);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -81,9 +87,9 @@ export default function AddEventModal({ route, navigation }: Props) {
       };
 
       if (existingEvent) {
-        await updateEvent(existingEvent.id, payload);
+        await updateEvent(existingEvent.id, payload, reminderOffsetDays);
       } else {
-        await addEvent(payload);
+        await addEvent(payload, reminderOffsetDays);
       }
       navigation.goBack();
     } finally {
@@ -165,6 +171,26 @@ export default function AddEventModal({ route, navigation }: Props) {
           autoCapitalize="none"
           keyboardType="url"
         />
+
+        <Text style={styles.fieldLabel}>Avisarme</Text>
+        <View style={styles.chipsRow}>
+          {REMINDER_OFFSETS.map((option) => (
+            <TouchableOpacity
+              key={option.days}
+              style={[styles.chip, reminderOffsetDays === option.days && styles.chipSelected]}
+              onPress={() => setReminderOffsetDays(option.days)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  reminderOffsetDays === option.days && styles.chipTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Button
           label={existingEvent ? "Guardar cambios" : "Crear evento"}

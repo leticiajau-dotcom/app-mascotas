@@ -25,11 +25,11 @@ function buildHtml(pet: Pet, events: MedicalEvent[]): string {
         <meta charset="utf-8" />
         <style>
           body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #1F2937; padding: 24px; }
-          h1 { color: #FF7A59; margin-bottom: 4px; }
+          h1 { color: #0284C7; margin-bottom: 4px; }
           .subtitle { color: #6B7280; margin-bottom: 24px; }
           table { width: 100%; border-collapse: collapse; margin-top: 16px; }
           th, td { border: 1px solid #E5E7EB; padding: 8px 12px; text-align: left; font-size: 12px; }
-          th { background-color: #FFF1EC; color: #E85D3D; }
+          th { background-color: #E0F2FE; color: #0369A1; }
           .info-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
           .info-item { min-width: 160px; }
           .info-label { font-size: 11px; color: #6B7280; text-transform: uppercase; }
@@ -79,13 +79,11 @@ function buildHtml(pet: Pet, events: MedicalEvent[]): string {
 }
 
 /**
- * Genera un PDF con el historial médico completo de una mascota y abre el
- * diálogo nativo para compartirlo/guardarlo.
+ * Genera un PDF estilizado con el historial médico completo de una mascota
+ * y abre el diálogo nativo para enviarlo por WhatsApp, Mail o cualquier
+ * otra app instalada que soporte compartir archivos.
  */
-export async function exportMedicalHistoryToPdf(
-  pet: Pet,
-  events: MedicalEvent[]
-): Promise<void> {
+export async function exportMedicalHistoryPDF(pet: Pet, events: MedicalEvent[]): Promise<void> {
   const html = buildHtml(pet, events);
   const { uri } = await Print.printToFileAsync({ html, base64: false });
 

@@ -1,6 +1,5 @@
 import React from "react";
 import { ActivityIndicator, View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Colors from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
@@ -39,15 +38,15 @@ export default function AppNavigator() {
     );
   }
 
+  // El <NavigationContainer> vive en App.tsx (raíz de la app); este
+  // componente solo define qué stack se muestra según la sesión.
   return (
-    <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        {session ? (
-          <RootStack.Screen name="Main" component={MainWithProviders} />
-        ) : (
-          <RootStack.Screen name="Auth" component={AuthStackNavigator} />
-        )}
-      </RootStack.Navigator>
-    </NavigationContainer>
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      {session ? (
+        <RootStack.Screen name="Main" component={MainWithProviders} />
+      ) : (
+        <RootStack.Screen name="Auth" component={AuthStackNavigator} />
+      )}
+    </RootStack.Navigator>
   );
 }

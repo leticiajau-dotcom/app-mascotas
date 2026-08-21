@@ -1,10 +1,11 @@
 import React from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ShoppingBag } from "lucide-react-native";
 import Card from "@/components/common/Card";
 import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
+import { usePetContext } from "@/context/PetContext";
 
 /**
  * Placeholder de la sección de tienda (e-commerce). En una siguiente
@@ -28,19 +29,60 @@ const PLACEHOLDER_PRODUCTS: Product[] = [
 ];
 
 export default function StoreScreen() {
+  const { events } = usePetContext();
+  // Solo se muestra el botón "Comprar" para eventos que traen un
+  // affiliateUrl configurado (preparado para futura monetización).
+  const recommendedEvents = events.filter((event) => !!event.affiliateUrl);
+
+  function handleBuy(url: string) {
+    Linking.openURL(url);
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Tienda</Text>
-        <Text style={styles.subtitle}>Próximamente: compra insumos para tu mascota</Text>
-      </View>
-
       <FlatList
         data={PLACEHOLDER_PRODUCTS}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.list}
         columnWrapperStyle={styles.column}
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>Tienda</Text>
+              <Text style={styles.subtitle}>Próximamente: compra insumos para tu mascota</Text>
+            </View>
+
+            {recommendedEvents.length > 0 ? (
+              <View style={styles.recommendedSection}>
+                <Text style={styles.recommendedTitle}>Recomendado para tus eventos</Text>
+                {recommendedEvents.map((event) =>
+                  event.affiliateUrl ? (
+                    <Card key={event.id} style={styles.recommendedCard}>
+                      <View style={styles.recommendedIconWrapper}>
+                        <ShoppingBag size={20} color={Colors.primary} />
+                      </View>
+                      <View style={styles.recommendedContent}>
+                        <Text style={styles.recommendedEventTitle} numberOfLines={1}>
+                          {event.title}
+                        </Text>
+                        <Text style={styles.recommendedEventMeta}>{event.category}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.buyButton}
+                        onPress={() => handleBuy(event.affiliateUrl as string)}
+                      >
+                        <Text style={styles.buyButtonText}>Comprar</Text>
+                      </TouchableOpacity>
+                    </Card>
+                  ) : null
+                )}
+              </View>
+            ) : null}
+
+            <Text style={styles.catalogTitle}>Catálogo</Text>
+          </>
+        }
         renderItem={({ item }) => (
           <Card style={styles.productCard}>
             <View style={styles.productImage}>
@@ -63,7 +105,7 @@ export default function StoreScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
-  header: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md },
+  header: { paddingHorizontal: Spacing.xs, paddingTop: Spacing.sm },
   title: {
     fontSize: FontSize.xl,
     fontWeight: "700",
@@ -75,6 +117,62 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: Spacing.sm,
   },
+  recommendedSection: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+  },
+  recommendedTitle: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+  },
+  recommendedCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
+  recommendedIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recommendedContent: {
+    flex: 1,
+    marginLeft: Spacing.sm,
+  },
+  recommendedEventTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  recommendedEventMeta: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  buyButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
+  },
+  buyButtonText: {
+    color: Colors.white,
+    fontWeight: "700",
+    fontSize: FontSize.xs,
+  },
+  catalogTitle: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: Colors.text,
+    paddingHorizontal: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
   list: { padding: Spacing.sm, paddingBottom: Spacing.xxl },
   column: { gap: Spacing.sm },
   productCard: {
@@ -84,7 +182,7 @@ const styles = StyleSheet.create({
   productImage: {
     height: 72,
     borderRadius: Radius.md,
-    backgroundColor: "#FFF1EC",
+    backgroundColor: Colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: Spacing.sm,

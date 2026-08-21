@@ -13,11 +13,11 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Solicita permisos de notificaciones locales. Debe llamarse una vez al
- * iniciar la app (ver hooks/useNotifications.ts). No usamos push remoto en
- * el MVP, solo notificaciones locales para recordatorios de eventos.
+ * Solicita permisos de notificaciones e inicializa el canal de Android.
+ * Debe llamarse una vez al iniciar la app (ver hooks/useNotifications.ts).
+ * El MVP solo usa notificaciones locales (no hay push remoto/servidor).
  */
-export async function registerForLocalNotificationsAsync(): Promise<boolean> {
+export async function registerForPushNotificationsAsync(): Promise<boolean> {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "Recordatorios de PetCare",
@@ -27,7 +27,9 @@ export async function registerForLocalNotificationsAsync(): Promise<boolean> {
   }
 
   if (!Device.isDevice) {
-    console.warn("[notifications] Los recordatorios locales requieren un dispositivo físico o emulador con soporte.");
+    console.warn(
+      "[notifications] Los recordatorios locales requieren un dispositivo físico o emulador con soporte."
+    );
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -41,27 +43,26 @@ export async function registerForLocalNotificationsAsync(): Promise<boolean> {
   return finalStatus === "granted";
 }
 
-interface ScheduleReminderParams {
-  /** Se usa el id del propio MedicalEvent, así no hace falta guardar un
-   * identificador de notificación aparte: programar y cancelar usan la
-   * misma clave. */
-  identifier: string;
-  title: string;
-  body: string;
-  date: Date;
-}
-
 /**
- * Programa (o reprograma) el recordatorio local de un evento médico,
- * usando su `id` como identificador de la notificación.
+ * Programa una notificación local en el dispositivo.
+ *
+ * @param title Título de la notificación.
+ * @param body Cuerpo/mensaje de la notificación.
+ * @param triggerDate Momento exacto en el que debe dispararse.
+ * @param dataPayload Datos arbitrarios adjuntos (ej. `{ eventId, petId }`)
+ *   para poder reaccionar al tocar la notificación.
+ * @param identifier Identificador explícito de la notificación. Al pasar
+ *   el mismo `id` de la entidad que la origina (ej. un MedicalEvent), se
+ *   puede reprogramar/cancelar sin tener que persistir un id aparte.
  */
-export async function scheduleEventReminder({
-  identifier,
-  title,
-  body,
-  date,
-}: ScheduleReminderParams): Promise<string | null> {
-  if (date.getTime() <= Date.now()) {
+export async function schedulePetReminder(
+  title: string,
+  body: string,
+  triggerDate: Date,
+  dataPayload?: Record<string, unknown>,
+  identifier?: string
+): Promise<string | null> {
+  if (triggerDate.getTime() <= Date.now()) {
     console.warn("[notifications] La fecha del recordatorio ya pasó, no se programó.");
     return null;
   }
@@ -71,16 +72,17 @@ export async function scheduleEventReminder({
     content: {
       title,
       body,
+      data: dataPayload ?? {},
       sound: true,
     },
-    trigger: { date },
+    trigger: { date: triggerDate },
   });
 }
 
-/** Cancela el recordatorio de un evento médico por su id, si existiera uno. */
-export async function cancelEventReminder(eventId: string): Promise<void> {
+/** Cancela una notificación previamente programada, dado su identificador. */
+export async function cancelPetReminder(identifier: string): Promise<void> {
   try {
-    await Notifications.cancelScheduledNotificationAsync(eventId);
+    await Notifications.cancelScheduledNotificationAsync(identifier);
   } catch (error) {
     console.warn("[notifications] No se pudo cancelar el recordatorio", error);
   }

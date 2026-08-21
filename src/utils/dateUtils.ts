@@ -82,6 +82,17 @@ export function isOverdue(isoDate: string): boolean {
   return new Date(isoDate).getTime() < Date.now();
 }
 
+/** True si `isoDate` cae en el mismo día calendario que hoy (hora local). */
+export function isToday(isoDate: string): boolean {
+  const date = new Date(isoDate);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
 export function sortByDateAsc<T extends { date: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }

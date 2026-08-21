@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Notifications from "expo-notifications";
-import { registerForLocalNotificationsAsync } from "@/services/notificationService";
+import { registerForPushNotificationsAsync } from "@/services/notificationService";
 
 /**
  * Solicita permisos de notificaciones locales al montar y escucha las
@@ -13,7 +13,7 @@ export function useNotifications() {
   const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
-    registerForLocalNotificationsAsync().then(setPermissionGranted);
+    registerForPushNotificationsAsync().then(setPermissionGranted);
 
     receivedListener.current = Notifications.addNotificationReceivedListener(() => {
       // Punto de extensión: podría refrescar el badge o el estado de eventos.

@@ -1,7 +1,17 @@
 import React, { useMemo, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FileDown } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import { Plus, Trash2, X } from "lucide-react-native";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import PetHeader from "@/components/pet/Header";
@@ -10,36 +20,80 @@ import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
-import { exportMedicalHistoryToPdf } from "@/services/pdfService";
-import { EVENT_CATEGORIES, EventCategory } from "@/types/event";
+import { usePetContext } from "@/context/PetContext";
+import { exportMedicalHistoryPDF } from "@/services/pdfService";
+import { StudyPhoto } from "@/types/pet";
 import { sortByDateDesc } from "@/utils/dateUtils";
 
-const FILTERS: Array<{ label: string; value: EventCategory | "all" }> = [
-  { label: "Todos", value: "all" },
-  ...EVENT_CATEGORIES.map((category) => ({ label: category, value: category })),
+type SectionKey = "vaccines" | "visits" | "gallery";
+
+const SECTIONS: Array<{ key: SectionKey; label: string }> = [
+  { key: "vaccines", label: "Vacunas" },
+  { key: "visits", label: "Visitas Médicas" },
+  { key: "gallery", label: "Galería de Estudios" },
 ];
 
 export default function MedicalHistoryScreen() {
   const { selectedPet } = usePets();
   const { events, toggleEventComplete } = useEvents(selectedPet?.id);
-  const [filter, setFilter] = useState<EventCategory | "all">("all");
+  const { studiesForPet, addStudyPhoto, deleteStudyPhoto } = usePetContext();
+  const [section, setSection] = useState<SectionKey>("vaccines");
   const [exporting, setExporting] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
 
-  const filteredEvents = useMemo(() => {
-    const base = filter === "all" ? events : events.filter((event) => event.category === filter);
-    return sortByDateDesc(base);
-  }, [events, filter]);
+  const vaccineEvents = useMemo(
+    () => sortByDateDesc(events.filter((event) => event.category === "Vacuna")),
+    [events]
+  );
+  const visitEvents = useMemo(
+    () => sortByDateDesc(events.filter((event) => event.category !== "Vacuna")),
+    [events]
+  );
+  const studies = selectedPet ? studiesForPet(selectedPet.id) : [];
 
   async function handleExport() {
     if (!selectedPet) return;
     setExporting(true);
     try {
-      await exportMedicalHistoryToPdf(selectedPet, sortByDateDesc(events));
+      await exportMedicalHistoryPDF(selectedPet, sortByDateDesc(events));
     } catch (error) {
       Alert.alert("Error", "No se pudo generar el PDF. Intenta nuevamente.");
     } finally {
       setExporting(false);
     }
+  }
+
+  async function handleAddStudyPhoto() {
+    if (!selectedPet) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permiso requerido",
+        "Necesitamos acceso a tus fotos para agregar un estudio a la galería."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    await addStudyPhoto({
+      petId: selectedPet.id,
+      uri: result.assets[0].uri,
+      date: new Date().toISOString(),
+    });
+  }
+
+  function handleDeleteStudyPhoto(study: StudyPhoto) {
+    Alert.alert("Eliminar estudio", "¿Seguro que deseas eliminar esta foto?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Eliminar", style: "destructive", onPress: () => deleteStudyPhoto(study.id) },
+    ]);
   }
 
   if (!selectedPet) {
@@ -64,8 +118,7 @@ export default function MedicalHistoryScreen() {
         <View style={styles.exportRow}>
           <Text style={styles.sectionTitle}>Historial médico</Text>
           <Button
-            label="Exportar PDF"
-            icon={<FileDown size={16} color={Colors.white} />}
+            label="📄 Exportar Ficha PDF"
             onPress={handleExport}
             loading={exporting}
             fullWidth={false}
@@ -73,39 +126,101 @@ export default function MedicalHistoryScreen() {
           />
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-          contentContainerStyle={styles.filterRow}
-        >
-          {FILTERS.map((option) => (
+        <View style={styles.tabsRow}>
+          {SECTIONS.map((option) => (
             <TouchableOpacity
-              key={option.value}
-              style={[styles.chip, filter === option.value && styles.chipSelected]}
-              onPress={() => setFilter(option.value)}
+              key={option.key}
+              style={[styles.tab, section === option.key && styles.tabSelected]}
+              onPress={() => setSection(option.key)}
             >
-              <Text style={[styles.chipText, filter === option.value && styles.chipTextSelected]}>
+              <Text style={[styles.tabText, section === option.key && styles.tabTextSelected]}>
                 {option.label}
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
-        {filteredEvents.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No hay eventos registrados en esta categoría.</Text>
-          </Card>
-        ) : (
-          filteredEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onToggleComplete={() => toggleEventComplete(event.id)}
-            />
-          ))
-        )}
+        {section === "vaccines" ? (
+          vaccineEvents.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No hay vacunas registradas.</Text>
+            </Card>
+          ) : (
+            vaccineEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onToggleComplete={() => toggleEventComplete(event.id)}
+              />
+            ))
+          )
+        ) : null}
+
+        {section === "visits" ? (
+          visitEvents.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No hay visitas médicas registradas.</Text>
+            </Card>
+          ) : (
+            visitEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onToggleComplete={() => toggleEventComplete(event.id)}
+              />
+            ))
+          )
+        ) : null}
+
+        {section === "gallery" ? (
+          <>
+            <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddStudyPhoto}>
+              <Plus size={18} color={Colors.primary} />
+              <Text style={styles.addPhotoButtonText}>Agregar estudio</Text>
+            </TouchableOpacity>
+
+            {studies.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Text style={styles.emptyText}>
+                  Aún no agregaste radiografías, análisis u otros estudios de tu mascota.
+                </Text>
+              </Card>
+            ) : (
+              <View style={styles.galleryGrid}>
+                {studies.map((study) => (
+                  <View key={study.id} style={styles.galleryItem}>
+                    <TouchableOpacity onPress={() => setPreviewUri(study.uri)}>
+                      <Image source={{ uri: study.uri }} style={styles.galleryImage} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.galleryDeleteButton}
+                      onPress={() => handleDeleteStudyPhoto(study)}
+                      hitSlop={8}
+                    >
+                      <Trash2 size={14} color={Colors.white} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        ) : null}
       </ScrollView>
+
+      <Modal visible={!!previewUri} transparent animationType="fade">
+        <View style={styles.previewOverlay}>
+          <TouchableOpacity
+            style={styles.previewCloseButton}
+            onPress={() => setPreviewUri(null)}
+            hitSlop={8}
+          >
+            <X size={22} color={Colors.white} />
+          </TouchableOpacity>
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="contain" />
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -114,11 +229,9 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   container: { padding: Spacing.md, paddingBottom: Spacing.xxl },
   exportRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     marginTop: Spacing.lg,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
   },
   sectionTitle: {
     fontSize: FontSize.lg,
@@ -126,34 +239,35 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   exportButton: {
+    alignSelf: "flex-start",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
   },
-  filterScroll: {
-    marginBottom: Spacing.sm,
+  tabsRow: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    padding: 4,
+    marginBottom: Spacing.md,
+    gap: 4,
   },
-  filterRow: {
-    gap: Spacing.xs,
-    paddingRight: Spacing.md,
-  },
-  chip: {
-    paddingHorizontal: Spacing.md,
+  tab: {
+    flex: 1,
     paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    alignItems: "center",
   },
-  chipSelected: {
+  tabSelected: {
     backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
   },
-  chipText: {
-    color: Colors.text,
-    fontSize: FontSize.sm,
-  },
-  chipTextSelected: {
-    color: Colors.white,
+  tabText: {
+    fontSize: FontSize.xs,
     fontWeight: "600",
+    color: Colors.textMuted,
+    textAlign: "center",
+  },
+  tabTextSelected: {
+    color: Colors.white,
   },
   emptyCard: {
     marginTop: Spacing.sm,
@@ -163,5 +277,61 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: "center",
     fontSize: FontSize.sm,
+  },
+  addPhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderStyle: "dashed",
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  addPhotoButtonText: {
+    color: Colors.primary,
+    fontWeight: "600",
+    fontSize: FontSize.sm,
+  },
+  galleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  galleryItem: {
+    width: "31%",
+    aspectRatio: 1,
+    borderRadius: Radius.md,
+    overflow: "hidden",
+  },
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+  },
+  galleryDeleteButton: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    borderRadius: Radius.full,
+    padding: 4,
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewCloseButton: {
+    position: "absolute",
+    top: 56,
+    right: Spacing.lg,
+    zIndex: 1,
+  },
+  previewImage: {
+    width: "100%",
+    height: "80%",
   },
 });

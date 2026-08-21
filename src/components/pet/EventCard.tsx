@@ -84,12 +84,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: Radius.md,
-    backgroundColor: "#FFF1EC",
+    backgroundColor: Colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
   },
   iconWrapperOverdue: {
-    backgroundColor: "#FDE8E8",
+    backgroundColor: Colors.dangerLight,
   },
   content: {
     flex: 1,

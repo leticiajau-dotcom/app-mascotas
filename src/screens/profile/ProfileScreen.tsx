@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LogOut, ShieldAlert } from "lucide-react-native";
+import { LogOut, Phone, ShieldAlert } from "lucide-react-native";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import Input from "@/components/common/Input";
 import PetHeader from "@/components/pet/Header";
 import Colors from "@/constants/Colors";
-import { FontSize, Spacing } from "@/constants/Theme";
+import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useAuth } from "@/context/AuthContext";
 import { usePetContext } from "@/context/PetContext";
 import { usePets } from "@/hooks/usePets";
@@ -16,7 +16,8 @@ import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
 
 /**
  * Perfil de la mascota + tarjeta de emergencia: datos que un cuidador
- * necesitaría en una urgencia (contacto del dueño, veterinario, alergias).
+ * necesitaría en una urgencia (contacto del dueño, veterinario, alergias)
+ * y accesos directos de llamada rápida.
  */
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -27,6 +28,8 @@ export default function ProfileScreen() {
   const [ownerPhone, setOwnerPhone] = useState("");
   const [vetName, setVetName] = useState("");
   const [vetPhone, setVetPhone] = useState("");
+  const [emergencyClinicName, setEmergencyClinicName] = useState("");
+  const [emergencyClinicPhone, setEmergencyClinicPhone] = useState("");
   const [allergies, setAllergies] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -36,6 +39,8 @@ export default function ProfileScreen() {
     setOwnerPhone(emergencyInfo.ownerPhone);
     setVetName(emergencyInfo.vetName ?? "");
     setVetPhone(emergencyInfo.vetPhone ?? "");
+    setEmergencyClinicName(emergencyInfo.emergencyClinicName ?? "");
+    setEmergencyClinicPhone(emergencyInfo.emergencyClinicPhone ?? "");
     setAllergies(emergencyInfo.allergies ?? "");
   }, [emergencyInfo]);
 
@@ -54,6 +59,8 @@ export default function ProfileScreen() {
         ownerPhone: ownerPhone.trim(),
         vetName: vetName.trim() || undefined,
         vetPhone: vetPhone.trim() || undefined,
+        emergencyClinicName: emergencyClinicName.trim() || undefined,
+        emergencyClinicPhone: emergencyClinicPhone.trim() || undefined,
         allergies: allergies.trim() || undefined,
       });
       Alert.alert("Guardado", "La información de emergencia se actualizó correctamente.");
@@ -68,6 +75,12 @@ export default function ProfileScreen() {
       { text: "Salir", style: "destructive", onPress: signOut },
     ]);
   }
+
+  function callNumber(phone: string) {
+    Linking.openURL(`tel:${phone}`);
+  }
+
+  const hasQuickCall = !!(emergencyInfo?.emergencyClinicPhone || emergencyInfo?.vetPhone);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -88,6 +101,7 @@ export default function ProfileScreen() {
               <DetailItem label="Peso" value={formatWeight(selectedPet.weight)} />
               <DetailItem label="Nacimiento" value={formatDateShort(selectedPet.birthDate)} />
               <DetailItem label="Raza" value={selectedPet.breed ?? "-"} />
+              <DetailItem label="Microchip" value={selectedPet.chipNumber ?? "-"} />
             </View>
           </Card>
         ) : (
@@ -95,6 +109,36 @@ export default function ProfileScreen() {
             <Text style={styles.emptyText}>Agrega una mascota desde el inicio para ver su perfil.</Text>
           </Card>
         )}
+
+        {selectedPet && hasQuickCall ? (
+          <Card style={styles.card}>
+            <Text style={styles.cardLabel}>Llamada rápida</Text>
+            <View style={styles.quickCallRow}>
+              {emergencyInfo?.emergencyClinicPhone ? (
+                <TouchableOpacity
+                  style={[styles.quickCallButton, styles.quickCallButtonDanger]}
+                  onPress={() => callNumber(emergencyInfo.emergencyClinicPhone as string)}
+                >
+                  <Phone size={16} color={Colors.white} />
+                  <Text style={styles.quickCallButtonText}>
+                    {emergencyInfo.emergencyClinicName || "Clínica 24h"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {emergencyInfo?.vetPhone ? (
+                <TouchableOpacity
+                  style={styles.quickCallButton}
+                  onPress={() => callNumber(emergencyInfo.vetPhone as string)}
+                >
+                  <Phone size={16} color={Colors.white} />
+                  <Text style={styles.quickCallButtonText}>
+                    {emergencyInfo.vetName || "Veterinario"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </Card>
+        ) : null}
 
         {selectedPet ? (
           <Card style={styles.card}>
@@ -110,11 +154,26 @@ export default function ProfileScreen() {
               onChangeText={setOwnerPhone}
               keyboardType="phone-pad"
             />
-            <Input label="Veterinario / Clínica" value={vetName} onChangeText={setVetName} />
+            <Input
+              label="Veterinario de cabecera"
+              value={vetName}
+              onChangeText={setVetName}
+            />
             <Input
               label="Teléfono del veterinario"
               value={vetPhone}
               onChangeText={setVetPhone}
+              keyboardType="phone-pad"
+            />
+            <Input
+              label="Clínica de urgencia 24h"
+              value={emergencyClinicName}
+              onChangeText={setEmergencyClinicName}
+            />
+            <Input
+              label="Teléfono de la clínica 24h"
+              value={emergencyClinicPhone}
+              onChangeText={setEmergencyClinicPhone}
               keyboardType="phone-pad"
             />
             <Input
@@ -193,6 +252,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
     marginTop: 2,
+  },
+  quickCallRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  quickCallButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.full,
+  },
+  quickCallButtonDanger: {
+    backgroundColor: Colors.danger,
+  },
+  quickCallButtonText: {
+    color: Colors.white,
+    fontWeight: "700",
+    fontSize: FontSize.sm,
   },
   emergencyHeader: {
     flexDirection: "row",

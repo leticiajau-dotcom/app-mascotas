@@ -1,7 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Home, ShoppingBag, Stethoscope, User } from "lucide-react-native";
+import { ClipboardList, Home, ShoppingBag, User } from "lucide-react-native";
 import Colors from "@/constants/Colors";
 import DashboardScreen from "@/screens/home/DashboardScreen";
 import AddEventModal from "@/screens/home/AddEventModal";
@@ -53,7 +53,7 @@ export default function TabNavigator() {
         component={MedicalHistoryScreen}
         options={{
           title: "Historial",
-          tabBarIcon: ({ color, size }) => <Stethoscope color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
         }}
       />
       <Tab.Screen

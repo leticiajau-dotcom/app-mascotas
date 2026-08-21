@@ -36,17 +36,29 @@ create table if not exists public.emergency_info (
   pet_id uuid primary key references public.pets (id) on delete cascade,
   owner_name text not null,
   owner_phone text not null,
-  vet_name text,
+  vet_name text, -- Veterinario de cabecera
   vet_phone text,
   vet_address text,
+  emergency_clinic_name text, -- Clínica de urgencia 24h
+  emergency_clinic_phone text,
   allergies text,
   conditions text,
   blood_type text
 );
 
+create table if not exists public.pet_studies (
+  id uuid primary key default gen_random_uuid(),
+  pet_id uuid not null references public.pets (id) on delete cascade,
+  photo_url text not null,
+  label text,
+  date timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 alter table public.pets enable row level security;
 alter table public.medical_events enable row level security;
 alter table public.emergency_info enable row level security;
+alter table public.pet_studies enable row level security;
 
 create policy "Los dueños administran sus propias mascotas"
   on public.pets for all
@@ -60,5 +72,10 @@ create policy "Los dueños administran los eventos de sus mascotas"
 
 create policy "Los dueños administran la info de emergencia de sus mascotas"
   on public.emergency_info for all
+  using (exists (select 1 from public.pets p where p.id = pet_id and p.owner_id = auth.uid()))
+  with check (exists (select 1 from public.pets p where p.id = pet_id and p.owner_id = auth.uid()));
+
+create policy "Los dueños administran los estudios de sus mascotas"
+  on public.pet_studies for all
   using (exists (select 1 from public.pets p where p.id = pet_id and p.owner_id = auth.uid()))
   with check (exists (select 1 from public.pets p where p.id = pet_id and p.owner_id = auth.uid()));
