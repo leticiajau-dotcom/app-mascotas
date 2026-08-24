@@ -247,10 +247,29 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       const existing = events.find((event) => event.id === eventId);
       if (!existing) return;
 
-      const updated: MedicalEvent = { ...existing, completed: !existing.completed };
+      const nowCompleted = !existing.completed;
+      const updated: MedicalEvent = { ...existing, completed: nowCompleted };
       await syncEventReminder(updated);
 
-      const next = events.map((event) => (event.id === eventId ? updated : event));
+      let next = events.map((event) => (event.id === eventId ? updated : event));
+
+      // Eventos que se repiten (ej. desparasitación, pipeta antipulgas): al
+      // marcarlos como hechos se genera automáticamente la próxima
+      // ocurrencia, con la misma cadencia, para no tener que cargarla a mano.
+      if (nowCompleted && existing.repeatIntervalDays) {
+        const nextDate = new Date(existing.date);
+        nextDate.setDate(nextDate.getDate() + existing.repeatIntervalDays);
+
+        const nextOccurrence: MedicalEvent = {
+          ...existing,
+          id: generateId(),
+          date: nextDate.toISOString(),
+          completed: false,
+        };
+        await syncEventReminder(nextOccurrence);
+        next = [...next, nextOccurrence];
+      }
+
       await persistEvents(next);
     },
     [events, persistEvents]

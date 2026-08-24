@@ -44,12 +44,19 @@ src/
 ├── constants/      # Colors (paleta azul/slate), Theme (spacing, radius, tipografía)
 ├── context/        # AuthContext (sesión Supabase), PetContext (mascotas/eventos/estudios)
 ├── hooks/          # usePets, useEvents, useNotifications
-├── navigation/     # TabNavigator (4 tabs), AppNavigator (Auth vs Main)
+├── navigation/     # TabNavigator (4 tabs) anidado dentro de un stack
+│   │               #   (AppNavigator) que también expone "AddEventModal" —
+│   │               #   así se abre desde Inicio o desde Historial por igual
 ├── screens/
 │   ├── auth/       # LoginScreen (login + registro)
 │   ├── home/       # DashboardScreen (saludo, hero card, agenda del día,
-│   │               #   botón "Mis mascotas" + FAB), AddEventModal
-│   ├── medical/    # MedicalHistoryScreen (Vacunas / Visitas Médicas / Galería de Estudios)
+│   │               #   botón "Mis mascotas" + FAB), AddEventModal (alta/
+│   │               #   edición de evento, con opción "Repetir" para tareas
+│   │               #   sin visita al veterinario: desparasitación, pipeta
+│   │               #   antipulgas, etc.)
+│   ├── medical/    # MedicalHistoryScreen (Vacunas / Visitas Médicas, cada
+│   │               #   una con botón "Agregar" y edición al tocar un
+│   │               #   evento / Galería de Estudios)
 │   ├── store/      # StoreScreen (catálogo placeholder + recomendados con affiliateUrl)
 │   └── profile/    # ProfileScreen (ficha técnica + emergencia + llamada rápida)
 ├── services/       # notificationService, pdfService, mediaService
@@ -74,7 +81,11 @@ Azul/slate: `#0284C7` (primario), `#0F172A` (texto), `#F8FAFC` (fondo). Ver
   `Turno Médico`), título, fecha y hora opcional. Todo evento no completado
   programa automáticamente una notificación local (`expo-notifications`).
   Incluye un `affiliateUrl` opcional, preparado para futura monetización
-  (link de compra del insumo asociado al evento).
+  (link de compra del insumo asociado al evento), y un `repeatIntervalDays`
+  opcional para tareas recurrentes que no requieren visita al veterinario
+  (desparasitación, pipeta antipulgas): al marcar el evento como hecho,
+  `PetContext` crea automáticamente la próxima ocurrencia con esa misma
+  cadencia.
 - **EmergencyInfo**: contacto del dueño, veterinario de cabecera y clínica de
   urgencia 24h (nombre + teléfono de cada uno, para llamada rápida) y
   alergias/condiciones.

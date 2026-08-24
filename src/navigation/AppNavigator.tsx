@@ -5,11 +5,13 @@ import Colors from "@/constants/Colors";
 import { useAuth } from "@/context/AuthContext";
 import { PetProvider } from "@/context/PetContext";
 import LoginScreen from "@/screens/auth/LoginScreen";
+import AddEventModal from "@/screens/home/AddEventModal";
 import TabNavigator from "./TabNavigator";
-import { AuthStackParamList, RootStackParamList } from "@/types/navigation";
+import { AuthStackParamList, MainStackParamList, RootStackParamList } from "@/types/navigation";
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const MainStack = createNativeStackNavigator<MainStackParamList>();
 
 function AuthStackNavigator() {
   return (
@@ -19,10 +21,26 @@ function AuthStackNavigator() {
   );
 }
 
+// Stack por encima de las tabs: así "AddEventModal" es una única pantalla
+// accesible desde cualquier tab (Inicio, Historial) en vez de vivir anidada
+// dentro de una sola de ellas.
+function MainStackNavigator() {
+  return (
+    <MainStack.Navigator>
+      <MainStack.Screen name="Tabs" component={TabNavigator} options={{ headerShown: false }} />
+      <MainStack.Screen
+        name="AddEventModal"
+        component={AddEventModal}
+        options={{ title: "Evento médico", presentation: "modal" }}
+      />
+    </MainStack.Navigator>
+  );
+}
+
 function MainWithProviders() {
   return (
     <PetProvider>
-      <TabNavigator />
+      <MainStackNavigator />
     </PetProvider>
   );
 }

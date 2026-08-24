@@ -23,6 +23,8 @@ import { usePetContext } from "@/context/PetContext";
 import { exportMedicalHistoryPDF } from "@/services/pdfService";
 import { openOrShareFile, pickDocument, pickImageFromLibrary } from "@/services/mediaService";
 import { StudyFile } from "@/types/pet";
+import { EventCategory } from "@/types/event";
+import { MedicalHistoryScreenProps } from "@/types/navigation";
 import { sortByDateDesc } from "@/utils/dateUtils";
 
 type SectionKey = "vaccines" | "visits" | "gallery";
@@ -33,7 +35,7 @@ const SECTIONS: Array<{ key: SectionKey; label: string }> = [
   { key: "gallery", label: "Galería de Estudios" },
 ];
 
-export default function MedicalHistoryScreen() {
+export default function MedicalHistoryScreen({ navigation }: MedicalHistoryScreenProps) {
   const { selectedPet } = usePets();
   const { events, toggleEventComplete } = useEvents(selectedPet?.id);
   const { studiesForPet, addStudyFile, deleteStudyFile } = usePetContext();
@@ -50,6 +52,11 @@ export default function MedicalHistoryScreen() {
     [events]
   );
   const studies = selectedPet ? studiesForPet(selectedPet.id) : [];
+
+  function openEvent(eventId?: string, category?: EventCategory) {
+    if (!selectedPet) return;
+    navigation.navigate("AddEventModal", { petId: selectedPet.id, eventId, category });
+  }
 
   async function handleExport() {
     if (!selectedPet) return;
@@ -161,35 +168,57 @@ export default function MedicalHistoryScreen() {
         </View>
 
         {section === "vaccines" ? (
-          vaccineEvents.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No hay vacunas registradas.</Text>
-            </Card>
-          ) : (
-            vaccineEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onToggleComplete={() => toggleEventComplete(event.id)}
-              />
-            ))
-          )
+          <>
+            <TouchableOpacity
+              style={styles.addEventButton}
+              onPress={() => openEvent(undefined, "Vacuna")}
+            >
+              <Plus size={18} color={Colors.primary} />
+              <Text style={styles.addEventButtonText}>Agregar vacuna</Text>
+            </TouchableOpacity>
+
+            {vaccineEvents.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No hay vacunas registradas.</Text>
+              </Card>
+            ) : (
+              vaccineEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onPress={() => openEvent(event.id)}
+                  onToggleComplete={() => toggleEventComplete(event.id)}
+                />
+              ))
+            )}
+          </>
         ) : null}
 
         {section === "visits" ? (
-          visitEvents.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No hay visitas médicas registradas.</Text>
-            </Card>
-          ) : (
-            visitEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onToggleComplete={() => toggleEventComplete(event.id)}
-              />
-            ))
-          )
+          <>
+            <TouchableOpacity
+              style={styles.addEventButton}
+              onPress={() => openEvent(undefined, "Turno Médico")}
+            >
+              <Plus size={18} color={Colors.primary} />
+              <Text style={styles.addEventButtonText}>Agregar visita médica</Text>
+            </TouchableOpacity>
+
+            {visitEvents.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No hay visitas médicas registradas.</Text>
+              </Card>
+            ) : (
+              visitEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onPress={() => openEvent(event.id)}
+                  onToggleComplete={() => toggleEventComplete(event.id)}
+                />
+              ))
+            )}
+          </>
         ) : null}
 
         {section === "gallery" ? (
@@ -318,6 +347,23 @@ const styles = StyleSheet.create({
   emptyText: {
     color: Colors.textMuted,
     textAlign: "center",
+    fontSize: FontSize.sm,
+  },
+  addEventButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderStyle: "dashed",
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  addEventButtonText: {
+    color: Colors.primary,
+    fontWeight: "600",
     fontSize: FontSize.sm,
   },
   galleryHint: {

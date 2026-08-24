@@ -37,3 +37,24 @@ export function initials(name: string): string {
 export function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+/**
+ * Etiqueta legible para la cadencia de repetición de un evento (ej.
+ * desparasitación cada 3 meses, pipeta antipulgas cada mes).
+ */
+export function formatRepeatInterval(days: number | undefined): string | null {
+  if (!days) return null;
+  if (days % 365 === 0) {
+    const years = days / 365;
+    return years === 1 ? "Cada año" : `Cada ${years} años`;
+  }
+  if (days % 30 === 0) {
+    const months = days / 30;
+    return months === 1 ? "Cada mes" : `Cada ${months} meses`;
+  }
+  if (days % 7 === 0) {
+    const weeks = days / 7;
+    return weeks === 1 ? "Cada semana" : `Cada ${weeks} semanas`;
+  }
+  return `Cada ${days} días`;
+}

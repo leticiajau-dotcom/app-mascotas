@@ -67,16 +67,23 @@ export async function schedulePetReminder(
     return null;
   }
 
-  return Notifications.scheduleNotificationAsync({
-    identifier,
-    content: {
-      title,
-      body,
-      data: dataPayload ?? {},
-      sound: true,
-    },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
-  });
+  try {
+    return await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title,
+        body,
+        data: dataPayload ?? {},
+        sound: true,
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: triggerDate },
+    });
+  } catch (error) {
+    // Ej. web (no soporta notificaciones nativas) o permiso denegado: no debe
+    // impedir guardar el evento, solo el recordatorio queda sin programar.
+    console.warn("[notifications] No se pudo programar el recordatorio", error);
+    return null;
+  }
 }
 
 /** Cancela una notificación previamente programada, dado su identificador. */

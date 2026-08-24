@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CalendarClock, PawPrint, Plus } from "lucide-react-native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import EventCard from "@/components/pet/EventCard";
@@ -16,9 +15,9 @@ import { useEvents } from "@/hooks/useEvents";
 import { Pet } from "@/types/pet";
 import { getSpeciesLabel, initials } from "@/utils/formatters";
 import { calculateAge, formatDate, isToday } from "@/utils/dateUtils";
-import { HomeStackParamList } from "@/types/navigation";
+import { DashboardScreenProps } from "@/types/navigation";
 
-type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
+type Props = DashboardScreenProps;
 
 export default function DashboardScreen({ navigation }: Props) {
   const { user } = useAuth();

@@ -8,10 +8,10 @@ import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useEvents } from "@/hooks/useEvents";
 import { EVENT_CATEGORIES, EventCategory } from "@/types/event";
-import { HomeStackParamList } from "@/types/navigation";
+import { MainStackParamList } from "@/types/navigation";
 import { parseDateInput, toDateInputValue } from "@/utils/dateUtils";
 
-type Props = NativeStackScreenProps<HomeStackParamList, "AddEventModal">;
+type Props = NativeStackScreenProps<MainStackParamList, "AddEventModal">;
 
 function isValidTime(value: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value.trim());
@@ -20,6 +20,14 @@ function isValidTime(value: string): boolean {
 const REMINDER_OFFSETS = [
   { label: "Mismo día", days: 0 },
   { label: "3 días antes", days: 3 },
+];
+
+const REPEAT_OPTIONS = [
+  { label: "No repetir", days: 0 },
+  { label: "Cada mes", days: 30 },
+  { label: "Cada 3 meses", days: 90 },
+  { label: "Cada 6 meses", days: 180 },
+  { label: "Cada año", days: 365 },
 ];
 
 export default function AddEventModal({ route, navigation }: Props) {
@@ -32,12 +40,13 @@ export default function AddEventModal({ route, navigation }: Props) {
     [events, eventId]
   );
 
-  const [category, setCategory] = useState<EventCategory>("Vacuna");
+  const [category, setCategory] = useState<EventCategory>(route.params?.category ?? "Vacuna");
   const [title, setTitle] = useState("");
   const [dateInput, setDateInput] = useState(toDateInputValue(new Date().toISOString()));
   const [time, setTime] = useState("");
   const [affiliateUrl, setAffiliateUrl] = useState("");
   const [reminderOffsetDays, setReminderOffsetDays] = useState(REMINDER_OFFSETS[0].days);
+  const [repeatIntervalDays, setRepeatIntervalDays] = useState(REPEAT_OPTIONS[0].days);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -47,6 +56,7 @@ export default function AddEventModal({ route, navigation }: Props) {
     setDateInput(toDateInputValue(existingEvent.date));
     setTime(existingEvent.time ?? "");
     setAffiliateUrl(existingEvent.affiliateUrl ?? "");
+    setRepeatIntervalDays(existingEvent.repeatIntervalDays ?? REPEAT_OPTIONS[0].days);
   }, [existingEvent]);
 
   async function handleSave() {
@@ -73,6 +83,7 @@ export default function AddEventModal({ route, navigation }: Props) {
         time: time.trim() || undefined,
         completed: existingEvent?.completed ?? false,
         affiliateUrl: affiliateUrl.trim() || undefined,
+        repeatIntervalDays: repeatIntervalDays || undefined,
       };
 
       if (existingEvent) {
@@ -181,6 +192,30 @@ export default function AddEventModal({ route, navigation }: Props) {
           ))}
         </View>
 
+        <Text style={styles.fieldLabel}>Repetir</Text>
+        <View style={styles.chipsRow}>
+          {REPEAT_OPTIONS.map((option) => (
+            <TouchableOpacity
+              key={option.days}
+              style={[styles.chip, repeatIntervalDays === option.days && styles.chipSelected]}
+              onPress={() => setRepeatIntervalDays(option.days)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  repeatIntervalDays === option.days && styles.chipTextSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.helperText}>
+          Útil para desparasitación, pipeta antipulgas u otras tareas que no requieren turno con
+          el veterinario: al marcar el evento como hecho se crea automáticamente el próximo.
+        </Text>
+
         <Button
           label={existingEvent ? "Guardar cambios" : "Crear evento"}
           onPress={handleSave}
@@ -235,6 +270,12 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: Colors.white,
     fontWeight: "600",
+  },
+  helperText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: -Spacing.xs,
+    marginBottom: Spacing.md,
   },
   saveButton: {
     marginTop: Spacing.md,

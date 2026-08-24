@@ -6,6 +6,7 @@ import {
   Circle,
   LucideIcon,
   Pill,
+  Repeat,
   ShoppingBag,
   Stethoscope,
   Syringe,
@@ -15,6 +16,7 @@ import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { EventCategory, MedicalEvent } from "@/types/event";
 import { formatDate, isOverdue } from "@/utils/dateUtils";
+import { formatRepeatInterval } from "@/utils/formatters";
 
 const ICONS: Record<EventCategory, LucideIcon> = {
   Vacuna: Syringe,
@@ -32,6 +34,7 @@ interface EventCardProps {
 export default function EventCard({ event, onPress, onToggleComplete }: EventCardProps) {
   const Icon = ICONS[event.category];
   const overdue = !event.completed && isOverdue(event.date);
+  const repeatLabel = formatRepeatInterval(event.repeatIntervalDays);
 
   function handleOpenAffiliateLink() {
     if (event.affiliateUrl) Linking.openURL(event.affiliateUrl);
@@ -53,6 +56,12 @@ export default function EventCard({ event, onPress, onToggleComplete }: EventCar
             {event.time ? ` · ${event.time}` : ""}
           </Text>
           {overdue ? <Text style={styles.overdueLabel}>Vencido</Text> : null}
+          {repeatLabel ? (
+            <View style={styles.repeatRow}>
+              <Repeat size={11} color={Colors.textMuted} />
+              <Text style={styles.repeatLabel}>{repeatLabel}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.actions}>
@@ -110,6 +119,16 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontWeight: "700",
     marginTop: 2,
+  },
+  repeatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  repeatLabel: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
   },
   actions: {
     alignItems: "center",
