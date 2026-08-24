@@ -13,6 +13,7 @@ create table if not exists public.pets (
   weight numeric(5, 2),
   photo_url text,
   chip_number text,
+  active boolean not null default true, -- false = mascota dada de baja
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -49,7 +50,10 @@ create table if not exists public.emergency_info (
 create table if not exists public.pet_studies (
   id uuid primary key default gen_random_uuid(),
   pet_id uuid not null references public.pets (id) on delete cascade,
-  photo_url text not null,
+  file_url text not null,
+  file_name text not null,
+  mime_type text,
+  kind text not null default 'image' check (kind in ('image', 'document')),
   label text,
   date timestamptz not null default now(),
   created_at timestamptz not null default now()

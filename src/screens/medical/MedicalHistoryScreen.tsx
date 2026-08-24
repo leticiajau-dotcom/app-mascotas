@@ -10,8 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
-import { Plus, Trash2, X } from "lucide-react-native";
+import { FileText, Plus, Trash2, X } from "lucide-react-native";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import PetHeader from "@/components/pet/Header";
@@ -22,7 +21,8 @@ import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
 import { usePetContext } from "@/context/PetContext";
 import { exportMedicalHistoryPDF } from "@/services/pdfService";
-import { StudyPhoto } from "@/types/pet";
+import { openOrShareFile, pickDocument, pickImageFromLibrary } from "@/services/mediaService";
+import { StudyFile } from "@/types/pet";
 import { sortByDateDesc } from "@/utils/dateUtils";
 
 type SectionKey = "vaccines" | "visits" | "gallery";
@@ -36,7 +36,7 @@ const SECTIONS: Array<{ key: SectionKey; label: string }> = [
 export default function MedicalHistoryScreen() {
   const { selectedPet } = usePets();
   const { events, toggleEventComplete } = useEvents(selectedPet?.id);
-  const { studiesForPet, addStudyPhoto, deleteStudyPhoto } = usePetContext();
+  const { studiesForPet, addStudyFile, deleteStudyFile } = usePetContext();
   const [section, setSection] = useState<SectionKey>("vaccines");
   const [exporting, setExporting] = useState(false);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
@@ -63,36 +63,56 @@ export default function MedicalHistoryScreen() {
     }
   }
 
-  async function handleAddStudyPhoto() {
+  async function handleAddImage() {
     if (!selectedPet) return;
-
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    const result = await pickImageFromLibrary();
+    if (result.status === "denied") {
       Alert.alert(
         "Permiso requerido",
         "Necesitamos acceso a tus fotos para agregar un estudio a la galería."
       );
       return;
     }
+    if (result.status === "canceled") return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return;
-
-    await addStudyPhoto({
+    await addStudyFile({
       petId: selectedPet.id,
-      uri: result.assets[0].uri,
+      uri: result.file.uri,
+      fileName: result.file.fileName,
+      mimeType: result.file.mimeType,
+      kind: "image",
       date: new Date().toISOString(),
     });
   }
 
-  function handleDeleteStudyPhoto(study: StudyPhoto) {
-    Alert.alert("Eliminar estudio", "¿Seguro que deseas eliminar esta foto?", [
+  async function handleAddDocument() {
+    if (!selectedPet) return;
+    const result = await pickDocument();
+    if (result.status !== "success") return;
+
+    const kind = result.file.mimeType?.startsWith("image/") ? "image" : "document";
+    await addStudyFile({
+      petId: selectedPet.id,
+      uri: result.file.uri,
+      fileName: result.file.fileName,
+      mimeType: result.file.mimeType,
+      kind,
+      date: new Date().toISOString(),
+    });
+  }
+
+  function handleOpenStudy(study: StudyFile) {
+    if (study.kind === "image") {
+      setPreviewUri(study.uri);
+    } else {
+      openOrShareFile(study.uri, study.mimeType);
+    }
+  }
+
+  function handleDeleteStudy(study: StudyFile) {
+    Alert.alert("Eliminar", `¿Seguro que deseas eliminar "${study.fileName}"?`, [
       { text: "Cancelar", style: "cancel" },
-      { text: "Eliminar", style: "destructive", onPress: () => deleteStudyPhoto(study.id) },
+      { text: "Eliminar", style: "destructive", onPress: () => deleteStudyFile(study.id) },
     ]);
   }
 
@@ -174,10 +194,20 @@ export default function MedicalHistoryScreen() {
 
         {section === "gallery" ? (
           <>
-            <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddStudyPhoto}>
-              <Plus size={18} color={Colors.primary} />
-              <Text style={styles.addPhotoButtonText}>Agregar estudio</Text>
-            </TouchableOpacity>
+            <Text style={styles.galleryHint}>
+              Fotos de estudios, o documentos que te pase el veterinario/laboratorio (resultados,
+              historia clínica en PDF, etc.).
+            </Text>
+            <View style={styles.addButtonsRow}>
+              <TouchableOpacity style={styles.addFileButton} onPress={handleAddImage}>
+                <Plus size={18} color={Colors.primary} />
+                <Text style={styles.addFileButtonText}>Agregar foto</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addFileButton} onPress={handleAddDocument}>
+                <Plus size={18} color={Colors.primary} />
+                <Text style={styles.addFileButtonText}>Importar documento</Text>
+              </TouchableOpacity>
+            </View>
 
             {studies.length === 0 ? (
               <Card style={styles.emptyCard}>
@@ -189,12 +219,24 @@ export default function MedicalHistoryScreen() {
               <View style={styles.galleryGrid}>
                 {studies.map((study) => (
                   <View key={study.id} style={styles.galleryItem}>
-                    <TouchableOpacity onPress={() => setPreviewUri(study.uri)}>
-                      <Image source={{ uri: study.uri }} style={styles.galleryImage} />
+                    <TouchableOpacity
+                      style={styles.galleryItemTap}
+                      onPress={() => handleOpenStudy(study)}
+                    >
+                      {study.kind === "image" ? (
+                        <Image source={{ uri: study.uri }} style={styles.galleryImage} />
+                      ) : (
+                        <View style={styles.documentTile}>
+                          <FileText size={26} color={Colors.primary} />
+                          <Text style={styles.documentFileName} numberOfLines={2}>
+                            {study.fileName}
+                          </Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.galleryDeleteButton}
-                      onPress={() => handleDeleteStudyPhoto(study)}
+                      onPress={() => handleDeleteStudy(study)}
                       hitSlop={8}
                     >
                       <Trash2 size={14} color={Colors.white} />
@@ -278,7 +320,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: FontSize.sm,
   },
-  addPhotoButton: {
+  galleryHint: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginBottom: Spacing.sm,
+  },
+  addButtonsRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  addFileButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -288,12 +341,13 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderRadius: Radius.md,
     paddingVertical: Spacing.sm,
-    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.xs,
   },
-  addPhotoButtonText: {
+  addFileButtonText: {
     color: Colors.primary,
     fontWeight: "600",
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
+    textAlign: "center",
   },
   galleryGrid: {
     flexDirection: "row",
@@ -306,9 +360,26 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     overflow: "hidden",
   },
+  galleryItemTap: {
+    width: "100%",
+    height: "100%",
+  },
   galleryImage: {
     width: "100%",
     height: "100%",
+  },
+  documentTile: {
+    flex: 1,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.xs,
+  },
+  documentFileName: {
+    fontSize: 10,
+    color: Colors.text,
+    textAlign: "center",
+    marginTop: 4,
   },
   galleryDeleteButton: {
     position: "absolute",

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CalendarClock, Plus } from "lucide-react-native";
+import { CalendarClock, Camera, Plus } from "lucide-react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
@@ -20,6 +21,7 @@ import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
+import { pickImageFromLibrary } from "@/services/mediaService";
 import { PetSpecies } from "@/types/pet";
 import { SPECIES_LABELS } from "@/utils/formatters";
 import { formatDate, isToday, parseDateInput } from "@/utils/dateUtils";
@@ -173,6 +175,7 @@ function AddPetModal({
   const [breed, setBreed] = useState("");
   const [birthDateInput, setBirthDateInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
+  const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   function resetForm() {
@@ -181,7 +184,18 @@ function AddPetModal({
     setSpecies("Dog");
     setBirthDateInput("");
     setWeightInput("");
+    setPhotoUri(undefined);
     setError(null);
+  }
+
+  async function handlePickPhoto() {
+    const result = await pickImageFromLibrary();
+    if (result.status === "denied") {
+      setError("Necesitamos acceso a tus fotos para elegir la imagen de tu mascota.");
+      return;
+    }
+    if (result.status === "canceled") return;
+    setPhotoUri(result.file.uri);
   }
 
   async function handleSubmit() {
@@ -214,6 +228,7 @@ function AddPetModal({
       breed: breed.trim() || undefined,
       birthDate,
       weight,
+      photoUrl: photoUri,
     });
     resetForm();
     onClose();
@@ -224,6 +239,20 @@ function AddPetModal({
       <View style={styles.modalOverlay}>
         <View style={styles.modalSheet}>
           <Text style={styles.modalTitle}>Nueva mascota</Text>
+
+          <TouchableOpacity style={styles.photoPicker} onPress={handlePickPhoto}>
+            {photoUri ? (
+              <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Camera size={22} color={Colors.primary} />
+              </View>
+            )}
+            <Text style={styles.photoPickerText}>
+              {photoUri ? "Cambiar foto" : "Agregar foto (opcional)"}
+            </Text>
+          </TouchableOpacity>
+
           <Input label="Nombre" placeholder="Ej. Firulais" value={name} onChangeText={setName} />
           <Input
             label="Raza (opcional)"
@@ -443,6 +472,29 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontSize: FontSize.sm,
     marginBottom: Spacing.sm,
+  },
+  photoPicker: {
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  photoPreview: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.full,
+  },
+  photoPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoPickerText: {
+    marginTop: Spacing.xs,
+    color: Colors.primary,
+    fontSize: FontSize.xs,
+    fontWeight: "600",
   },
   fieldLabel: {
     fontSize: FontSize.sm,

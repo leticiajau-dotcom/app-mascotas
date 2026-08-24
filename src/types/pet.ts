@@ -30,13 +30,20 @@ export interface EmergencyInfo {
 
 export type NewPetInput = Omit<Pet, "id" | "active">;
 
-/** Foto de un estudio/análisis (radiografía, laboratorio, etc.) de una mascota. */
-export interface StudyPhoto {
+/**
+ * Un archivo asociado a una mascota: una foto de estudio (radiografía,
+ * análisis) o un documento importado (PDF de resultados de laboratorio,
+ * historia clínica que envía el veterinario, etc.).
+ */
+export interface StudyFile {
   id: string;
   petId: string;
   uri: string;
+  fileName: string;
+  mimeType?: string;
+  kind: "image" | "document";
   label?: string;
   date: string; // ISO string
 }
 
-export type NewStudyPhotoInput = Omit<StudyPhoto, "id">;
+export type NewStudyFileInput = Omit<StudyFile, "id">;

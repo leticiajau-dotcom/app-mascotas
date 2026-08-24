@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { storage } from "@/api/storage";
 import { cancelPetReminder, schedulePetReminder } from "@/services/notificationService";
-import { EmergencyInfo, NewPetInput, NewStudyPhotoInput, Pet, StudyPhoto } from "@/types/pet";
+import { EmergencyInfo, NewPetInput, NewStudyFileInput, Pet, StudyFile } from "@/types/pet";
 import { MedicalEvent, NewMedicalEventInput } from "@/types/event";
 import { combineDateAndTime } from "@/utils/dateUtils";
 import { generateId } from "@/utils/formatters";
@@ -20,7 +20,7 @@ interface PetContextValue {
   selectedPet: Pet | null;
   selectedPetId: string | null;
   events: MedicalEvent[];
-  studies: StudyPhoto[];
+  studies: StudyFile[];
   emergencyInfo: EmergencyInfo | null;
   loading: boolean;
   selectPet: (petId: string) => void;
@@ -37,9 +37,9 @@ interface PetContextValue {
   ) => Promise<void>;
   deleteEvent: (eventId: string) => Promise<void>;
   toggleEventComplete: (eventId: string) => Promise<void>;
-  studiesForPet: (petId: string) => StudyPhoto[];
-  addStudyPhoto: (input: NewStudyPhotoInput) => Promise<StudyPhoto>;
-  deleteStudyPhoto: (studyId: string) => Promise<void>;
+  studiesForPet: (petId: string) => StudyFile[];
+  addStudyFile: (input: NewStudyFileInput) => Promise<StudyFile>;
+  deleteStudyFile: (studyId: string) => Promise<void>;
   saveEmergencyInfo: (info: EmergencyInfo) => Promise<void>;
 }
 
@@ -51,7 +51,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
 
   const [pets, setPets] = useState<Pet[]>([]);
   const [events, setEvents] = useState<MedicalEvent[]>([]);
-  const [studies, setStudies] = useState<StudyPhoto[]>([]);
+  const [studies, setStudies] = useState<StudyFile[]>([]);
   const [emergencyInfo, setEmergencyInfo] = useState<EmergencyInfo | null>(null);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +65,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       const [loadedPets, loadedEvents, loadedStudies, loadedEmergencyInfo] = await Promise.all([
         storage.readJSON<Pet[]>(storage.keys.pets(userId), []),
         storage.readJSON<MedicalEvent[]>(storage.keys.events(userId), []),
-        storage.readJSON<StudyPhoto[]>(storage.keys.studies(userId), []),
+        storage.readJSON<StudyFile[]>(storage.keys.studies(userId), []),
         storage.readJSON<EmergencyInfo | null>(storage.keys.emergencyInfo(userId), null),
       ]);
 
@@ -110,7 +110,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
   );
 
   const persistStudies = useCallback(
-    async (next: StudyPhoto[]) => {
+    async (next: StudyFile[]) => {
       setStudies(next);
       await storage.writeJSON(storage.keys.studies(userId), next);
     },
@@ -255,16 +255,16 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
     [studies]
   );
 
-  const addStudyPhoto = useCallback(
-    async (input: NewStudyPhotoInput) => {
-      const study: StudyPhoto = { ...input, id: generateId() };
+  const addStudyFile = useCallback(
+    async (input: NewStudyFileInput) => {
+      const study: StudyFile = { ...input, id: generateId() };
       await persistStudies([...studies, study]);
       return study;
     },
     [studies, persistStudies]
   );
 
-  const deleteStudyPhoto = useCallback(
+  const deleteStudyFile = useCallback(
     async (studyId: string) => {
       await persistStudies(studies.filter((study) => study.id !== studyId));
     },
@@ -307,8 +307,8 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       deleteEvent,
       toggleEventComplete,
       studiesForPet,
-      addStudyPhoto,
-      deleteStudyPhoto,
+      addStudyFile,
+      deleteStudyFile,
       saveEmergencyInfo,
     }),
     [
@@ -331,8 +331,8 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       deleteEvent,
       toggleEventComplete,
       studiesForPet,
-      addStudyPhoto,
-      deleteStudyPhoto,
+      addStudyFile,
+      deleteStudyFile,
       saveEmergencyInfo,
     ]
   );

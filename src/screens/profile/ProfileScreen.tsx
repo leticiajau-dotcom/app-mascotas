@@ -11,6 +11,7 @@ import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useAuth } from "@/context/AuthContext";
 import { usePetContext } from "@/context/PetContext";
 import { usePets } from "@/hooks/usePets";
+import { pickImageFromLibrary } from "@/services/mediaService";
 import { Pet } from "@/types/pet";
 import { calculateAge, formatDateShort } from "@/utils/dateUtils";
 import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
@@ -23,7 +24,8 @@ import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { selectedPet, selectedPetId } = usePets();
-  const { pets, emergencyInfo, saveEmergencyInfo, selectPet, setPetActive } = usePetContext();
+  const { pets, emergencyInfo, saveEmergencyInfo, selectPet, setPetActive, updatePet } =
+    usePetContext();
 
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
@@ -78,6 +80,19 @@ export default function ProfileScreen() {
       { text: "Cancelar", style: "cancel" },
       { text: "Salir", style: "destructive", onPress: signOut },
     ]);
+  }
+
+  async function handleChangePhoto(pet: Pet) {
+    const result = await pickImageFromLibrary();
+    if (result.status === "denied") {
+      Alert.alert(
+        "Permiso requerido",
+        "Necesitamos acceso a tus fotos para elegir la imagen de tu mascota."
+      );
+      return;
+    }
+    if (result.status === "canceled") return;
+    await updatePet(pet.id, { photoUrl: result.file.uri });
   }
 
   function handleDeactivate(pet: Pet) {
@@ -152,6 +167,13 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.petActionsRow}>
+                <Button
+                  label="Cambiar foto"
+                  variant="outline"
+                  fullWidth={false}
+                  onPress={() => handleChangePhoto(pet)}
+                  style={styles.petActionButton}
+                />
                 {pet.active && pet.id !== selectedPetId ? (
                   <Button
                     label="Seleccionar"

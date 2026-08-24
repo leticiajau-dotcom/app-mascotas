@@ -13,7 +13,8 @@ información de emergencia.
 - `@react-native-async-storage/async-storage` (persistencia offline-first)
 - `expo-print` + `expo-sharing` (exportar historial a PDF, enviar por
   WhatsApp/Mail vía el diálogo nativo de compartir)
-- `expo-image-picker` (foto de la mascota y galería de estudios)
+- `expo-image-picker` + `expo-document-picker` (foto de la mascota y
+  Galería de Estudios: fotos o documentos/PDF importados)
 - `@supabase/supabase-js` (autenticación; listo para sincronizar en la nube)
 - `lucide-react-native` (iconografía)
 
@@ -49,7 +50,7 @@ src/
 │   ├── medical/    # MedicalHistoryScreen (Vacunas / Visitas Médicas / Galería de Estudios)
 │   ├── store/      # StoreScreen (catálogo placeholder + recomendados con affiliateUrl)
 │   └── profile/    # ProfileScreen (ficha técnica + emergencia + llamada rápida)
-├── services/       # notificationService, pdfService
+├── services/       # notificationService, pdfService, mediaService
 ├── types/          # pet.ts, event.ts, navigation.ts
 └── utils/          # dateUtils, formatters
 ```
@@ -62,7 +63,9 @@ Azul/slate: `#0284C7` (primario), `#0F172A` (texto), `#F8FAFC` (fondo). Ver
 ### Modelo de datos
 
 - **Pet**: nombre, especie (`Dog` | `Cat` | `Other`), raza, fecha de
-  nacimiento, peso, foto, número de chip (microchip).
+  nacimiento, peso, foto, número de chip (microchip) y `active` — mascotas
+  "dadas de baja" conservan todo su historial pero quedan fuera del selector
+  y de la creación de nuevos eventos.
 - **MedicalEvent**: categoría (`Vacuna` | `Desparasitante` | `Medicamento` |
   `Turno Médico`), título, fecha y hora opcional. Todo evento no completado
   programa automáticamente una notificación local (`expo-notifications`).
@@ -71,8 +74,9 @@ Azul/slate: `#0284C7` (primario), `#0F172A` (texto), `#F8FAFC` (fondo). Ver
 - **EmergencyInfo**: contacto del dueño, veterinario de cabecera y clínica de
   urgencia 24h (nombre + teléfono de cada uno, para llamada rápida) y
   alergias/condiciones.
-- **StudyPhoto**: foto de un estudio/análisis (radiografía, laboratorio,
-  etc.) asociada a una mascota, para la Galería de Estudios.
+- **StudyFile**: foto de un estudio (radiografía, análisis) o un documento
+  importado (PDF de resultados de laboratorio, historia clínica que envía
+  el veterinario, etc.) asociado a una mascota, para la Galería de Estudios.
 
 ### Persistencia (MVP offline-first)
 
