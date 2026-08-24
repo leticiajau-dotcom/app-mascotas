@@ -2,6 +2,8 @@ export interface Pet {
   id: string;
   name: string;
   species: "Dog" | "Cat" | "Other";
+  /** Nombre de la especie cuando `species` es "Other" (ej. "Conejo", "Hamster"). */
+  customSpecies?: string;
   breed?: string;
   birthDate?: string;
   weight?: number;

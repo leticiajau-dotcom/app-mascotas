@@ -62,9 +62,11 @@ Azul/slate: `#0284C7` (primario), `#0F172A` (texto), `#F8FAFC` (fondo). Ver
 
 ### Modelo de datos
 
-- **Pet**: nombre, especie (`Dog` | `Cat` | `Other`), raza, fecha de
-  nacimiento, peso, foto, número de chip (microchip) y `active` — mascotas
-  "dadas de baja" conservan todo su historial pero quedan fuera del selector
+- **Pet**: nombre, especie (`Dog` | `Cat` | `Other`, con `customSpecies` para
+  cuando es "Other" — ej. "Conejo" — que se muestra en toda la app en vez de
+  "Otro"), raza, fecha de nacimiento, peso, foto, número de chip (microchip)
+  y `active` — mascotas "dadas de baja" conservan todo su historial pero
+  quedan fuera del selector
   y de la creación de nuevos eventos.
 - **MedicalEvent**: categoría (`Vacuna` | `Desparasitante` | `Medicamento` |
   `Turno Médico`), título, fecha y hora opcional. Todo evento no completado

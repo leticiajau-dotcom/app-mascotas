@@ -23,7 +23,7 @@ import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
 import { pickImageFromLibrary } from "@/services/mediaService";
 import { PetSpecies } from "@/types/pet";
-import { SPECIES_LABELS } from "@/utils/formatters";
+import { SPECIES_LABELS, getSpeciesLabel } from "@/utils/formatters";
 import { formatDate, isToday, parseDateInput } from "@/utils/dateUtils";
 import { HomeStackParamList } from "@/types/navigation";
 
@@ -172,6 +172,7 @@ function AddPetModal({
 }) {
   const [name, setName] = useState("");
   const [species, setSpecies] = useState<PetSpecies>("Dog");
+  const [customSpecies, setCustomSpecies] = useState("");
   const [breed, setBreed] = useState("");
   const [birthDateInput, setBirthDateInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
@@ -182,6 +183,7 @@ function AddPetModal({
     setName("");
     setBreed("");
     setSpecies("Dog");
+    setCustomSpecies("");
     setBirthDateInput("");
     setWeightInput("");
     setPhotoUri(undefined);
@@ -200,6 +202,11 @@ function AddPetModal({
 
   async function handleSubmit() {
     if (!name.trim()) return;
+
+    if (species === "Other" && !customSpecies.trim()) {
+      setError("Contanos qué especie es (ej. Conejo, Hamster, Ave).");
+      return;
+    }
 
     let birthDate: string | undefined;
     if (birthDateInput.trim()) {
@@ -225,6 +232,7 @@ function AddPetModal({
     await onSubmit({
       name: name.trim(),
       species,
+      customSpecies: species === "Other" ? customSpecies.trim() : undefined,
       breed: breed.trim() || undefined,
       birthDate,
       weight,
@@ -275,6 +283,15 @@ function AddPetModal({
               </TouchableOpacity>
             ))}
           </View>
+
+          {species === "Other" ? (
+            <Input
+              label="¿Cuál especie?"
+              placeholder="Ej. Conejo, Hamster, Ave"
+              value={customSpecies}
+              onChangeText={setCustomSpecies}
+            />
+          ) : null}
 
           <Input
             label="Fecha de nacimiento (opcional, AAAA-MM-DD)"
@@ -333,7 +350,7 @@ function PetPickerModal({
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.petRow} onPress={() => onSelect(item.id)}>
                 <Text style={styles.petRowText}>{item.name}</Text>
-                <Text style={styles.petRowSubtext}>{SPECIES_LABELS[item.species]}</Text>
+                <Text style={styles.petRowSubtext}>{getSpeciesLabel(item)}</Text>
               </TouchableOpacity>
             )}
           />

@@ -14,7 +14,7 @@ import { usePets } from "@/hooks/usePets";
 import { pickImageFromLibrary } from "@/services/mediaService";
 import { Pet } from "@/types/pet";
 import { calculateAge, formatDateShort } from "@/utils/dateUtils";
-import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
+import { getSpeciesLabel, formatWeight } from "@/utils/formatters";
 
 /**
  * Perfil: datos de la cuenta, ficha de cada mascota (con alta/baja) y la
@@ -158,7 +158,7 @@ export default function ProfileScreen() {
               ) : null}
 
               <View style={styles.petDetailsGrid}>
-                <DetailItem label="Especie" value={SPECIES_LABELS[pet.species]} />
+                <DetailItem label="Especie" value={getSpeciesLabel(pet)} />
                 <DetailItem label="Edad" value={calculateAge(pet.birthDate)} />
                 <DetailItem label="Peso" value={formatWeight(pet.weight)} />
                 <DetailItem label="Nacimiento" value={formatDateShort(pet.birthDate)} />

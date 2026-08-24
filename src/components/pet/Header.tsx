@@ -5,7 +5,7 @@ import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { Pet } from "@/types/pet";
 import { calculateAge } from "@/utils/dateUtils";
-import { SPECIES_LABELS, initials } from "@/utils/formatters";
+import { getSpeciesLabel, initials } from "@/utils/formatters";
 
 interface PetHeaderProps {
   pet: Pet | null;
@@ -34,7 +34,7 @@ export default function PetHeader({ pet, onPress }: PetHeaderProps) {
         <Text style={styles.name}>{pet ? pet.name : "Agrega una mascota"}</Text>
         <Text style={styles.subtitle}>
           {pet
-            ? `${SPECIES_LABELS[pet.species]} · ${calculateAge(pet.birthDate)}`
+            ? `${getSpeciesLabel(pet)} · ${calculateAge(pet.birthDate)}`
             : "Toca para comenzar"}
         </Text>
       </View>

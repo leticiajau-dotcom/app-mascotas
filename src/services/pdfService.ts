@@ -3,7 +3,7 @@ import * as Sharing from "expo-sharing";
 import { Pet } from "@/types/pet";
 import { MedicalEvent } from "@/types/event";
 import { calculateAge, formatDate } from "@/utils/dateUtils";
-import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
+import { getSpeciesLabel, formatWeight } from "@/utils/formatters";
 
 function buildHtml(pet: Pet, events: MedicalEvent[]): string {
   const rows = events
@@ -43,7 +43,7 @@ function buildHtml(pet: Pet, events: MedicalEvent[]): string {
         <div class="info-grid">
           <div class="info-item">
             <div class="info-label">Especie</div>
-            <div class="info-value">${SPECIES_LABELS[pet.species]}</div>
+            <div class="info-value">${getSpeciesLabel(pet)}</div>
           </div>
           <div class="info-item">
             <div class="info-label">Raza</div>
