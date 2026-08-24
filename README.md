@@ -39,7 +39,8 @@ src/
 ├── api/            # Cliente de Supabase (auth) y wrapper de AsyncStorage (datos)
 ├── components/
 │   ├── common/     # Button, Card, Input — primitivos de UI reutilizables
-│   └── pet/        # Header (selector de mascota), EventCard
+│   └── pet/        # Header (ficha compacta), EventCard, PetFormModal
+│   │               #   (alta/edición de mascota, compartido)
 ├── constants/      # Colors (paleta azul/slate), Theme (spacing, radius, tipografía)
 ├── context/        # AuthContext (sesión Supabase), PetContext (mascotas/eventos/estudios)
 ├── hooks/          # usePets, useEvents, useNotifications

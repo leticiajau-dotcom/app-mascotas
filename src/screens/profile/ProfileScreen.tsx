@@ -6,6 +6,7 @@ import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
 import Input from "@/components/common/Input";
 import PetHeader from "@/components/pet/Header";
+import PetFormModal from "@/components/pet/PetFormModal";
 import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useAuth } from "@/context/AuthContext";
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
 
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [editingPet, setEditingPet] = useState<Pet | null>(null);
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [vetName, setVetName] = useState("");
@@ -206,6 +208,13 @@ export default function ProfileScreen() {
 
               <View style={styles.petActionsRow}>
                 <Button
+                  label="Editar"
+                  variant="outline"
+                  fullWidth={false}
+                  onPress={() => setEditingPet(pet)}
+                  style={styles.petActionButton}
+                />
+                <Button
                   label="Cambiar foto"
                   variant="outline"
                   fullWidth={false}
@@ -325,6 +334,17 @@ export default function ProfileScreen() {
           </Card>
         ) : null}
       </ScrollView>
+
+      <PetFormModal
+        visible={!!editingPet}
+        title="Editar mascota"
+        submitLabel="Guardar cambios"
+        initialValues={editingPet ?? undefined}
+        onClose={() => setEditingPet(null)}
+        onSubmit={async (values) => {
+          if (editingPet) await updatePet(editingPet.id, values);
+        }}
+      />
     </SafeAreaView>
   );
 }

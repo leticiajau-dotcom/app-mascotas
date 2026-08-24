@@ -1,37 +1,24 @@
 import React, { useMemo, useState } from "react";
-import {
-  FlatList,
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CalendarClock, Camera, PawPrint, Plus } from "lucide-react-native";
+import { CalendarClock, PawPrint, Plus } from "lucide-react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
-import Input from "@/components/common/Input";
-import PetHeader from "@/components/pet/Header";
 import EventCard from "@/components/pet/EventCard";
+import PetFormModal from "@/components/pet/PetFormModal";
 import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useAuth } from "@/context/AuthContext";
 import { usePetContext } from "@/context/PetContext";
 import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
-import { pickImageFromLibrary } from "@/services/mediaService";
-import { Pet, PetSpecies } from "@/types/pet";
-import { SPECIES_LABELS, getSpeciesLabel, initials } from "@/utils/formatters";
-import { calculateAge, formatDate, isToday, parseDateInput } from "@/utils/dateUtils";
+import { Pet } from "@/types/pet";
+import { getSpeciesLabel, initials } from "@/utils/formatters";
+import { calculateAge, formatDate, isToday } from "@/utils/dateUtils";
 import { HomeStackParamList } from "@/types/navigation";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
-
-const SPECIES_OPTIONS: PetSpecies[] = ["Dog", "Cat", "Other"];
 
 export default function DashboardScreen({ navigation }: Props) {
   const { user } = useAuth();
@@ -57,17 +44,42 @@ export default function DashboardScreen({ navigation }: Props) {
           Hola{greetingName ? `, ${greetingName}` : ""} 👋
         </Text>
 
-        <Card>
-          <PetHeader
-            pet={selectedPet}
-            onPress={activePets.length === 0 ? () => setShowAddPet(true) : undefined}
-          />
-        </Card>
-
-        <TouchableOpacity style={styles.misMascotasButton} onPress={() => setShowPetPicker(true)}>
-          <PawPrint size={16} color={Colors.primary} />
+        <TouchableOpacity
+          style={styles.misMascotasButton}
+          onPress={() => setShowPetPicker(true)}
+        >
+          <PawPrint size={22} color={Colors.white} />
           <Text style={styles.misMascotasButtonText}>Mis mascotas</Text>
         </TouchableOpacity>
+
+        {selectedPet ? (
+          <View style={styles.currentPetRow}>
+            <View style={styles.currentPetAvatar}>
+              {selectedPet.photoUrl ? (
+                <Image source={{ uri: selectedPet.photoUrl }} style={styles.currentPetAvatarImage} />
+              ) : (
+                <Text style={styles.currentPetAvatarText}>{initials(selectedPet.name)}</Text>
+              )}
+            </View>
+            <Text style={styles.currentPetText}>
+              {selectedPet.name} · {getSpeciesLabel(selectedPet)} ·{" "}
+              {calculateAge(selectedPet.birthDate)}
+            </Text>
+          </View>
+        ) : (
+          <Card style={styles.emptyCard}>
+            <Text style={styles.emptyText}>
+              {pets.length > 0
+                ? "No tenés mascotas activas. Reactivá alguna desde tu Perfil o agregá una nueva."
+                : "Aún no tienes mascotas registradas. Tocá \"Mis mascotas\" para agregar la primera."}
+            </Text>
+            <Button
+              label="Agregar mascota"
+              onPress={() => setShowAddPet(true)}
+              style={styles.emptyCardButton}
+            />
+          </Card>
+        )}
 
         {selectedPet ? (
           <>
@@ -126,20 +138,7 @@ export default function DashboardScreen({ navigation }: Props) {
               ))
             )}
           </>
-        ) : (
-          <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              {pets.length > 0
-                ? "No tenés mascotas activas. Reactivá alguna desde tu Perfil o agregá una nueva."
-                : "Aún no tienes mascotas registradas. Toca la tarjeta de arriba para agregar la primera."}
-            </Text>
-            <Button
-              label="Agregar mascota"
-              onPress={() => setShowAddPet(true)}
-              style={styles.emptyCardButton}
-            />
-          </Card>
-        )}
+        ) : null}
       </ScrollView>
 
       {selectedPet ? (
@@ -152,7 +151,15 @@ export default function DashboardScreen({ navigation }: Props) {
         </TouchableOpacity>
       ) : null}
 
-      <AddPetModal visible={showAddPet} onClose={() => setShowAddPet(false)} onSubmit={addPet} />
+      <PetFormModal
+        visible={showAddPet}
+        title="Nueva mascota"
+        submitLabel="Guardar"
+        onClose={() => setShowAddPet(false)}
+        onSubmit={async (values) => {
+          await addPet(values);
+        }}
+      />
 
       <PetPickerModal
         visible={showPetPicker}
@@ -169,171 +176,6 @@ export default function DashboardScreen({ navigation }: Props) {
         onClose={() => setShowPetPicker(false)}
       />
     </SafeAreaView>
-  );
-}
-
-function AddPetModal({
-  visible,
-  onClose,
-  onSubmit,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onSubmit: ReturnType<typeof usePets>["addPet"];
-}) {
-  const [name, setName] = useState("");
-  const [species, setSpecies] = useState<PetSpecies>("Dog");
-  const [customSpecies, setCustomSpecies] = useState("");
-  const [breed, setBreed] = useState("");
-  const [birthDateInput, setBirthDateInput] = useState("");
-  const [weightInput, setWeightInput] = useState("");
-  const [photoUri, setPhotoUri] = useState<string | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
-
-  function resetForm() {
-    setName("");
-    setBreed("");
-    setSpecies("Dog");
-    setCustomSpecies("");
-    setBirthDateInput("");
-    setWeightInput("");
-    setPhotoUri(undefined);
-    setError(null);
-  }
-
-  async function handlePickPhoto() {
-    const result = await pickImageFromLibrary();
-    if (result.status === "denied") {
-      setError("Necesitamos acceso a tus fotos para elegir la imagen de tu mascota.");
-      return;
-    }
-    if (result.status === "canceled") return;
-    setPhotoUri(result.file.uri);
-  }
-
-  async function handleSubmit() {
-    if (!name.trim()) return;
-
-    if (species === "Other" && !customSpecies.trim()) {
-      setError("Contanos qué especie es (ej. Conejo, Hamster, Ave).");
-      return;
-    }
-
-    let birthDate: string | undefined;
-    if (birthDateInput.trim()) {
-      const parsed = parseDateInput(birthDateInput);
-      if (!parsed) {
-        setError("La fecha de nacimiento debe tener el formato AAAA-MM-DD.");
-        return;
-      }
-      birthDate = parsed.toISOString();
-    }
-
-    let weight: number | undefined;
-    if (weightInput.trim()) {
-      const parsedWeight = Number(weightInput.replace(",", "."));
-      if (Number.isNaN(parsedWeight) || parsedWeight <= 0) {
-        setError("El peso debe ser un número válido en kg.");
-        return;
-      }
-      weight = parsedWeight;
-    }
-
-    setError(null);
-    await onSubmit({
-      name: name.trim(),
-      species,
-      customSpecies: species === "Other" ? customSpecies.trim() : undefined,
-      breed: breed.trim() || undefined,
-      birthDate,
-      weight,
-      photoUrl: photoUri,
-    });
-    resetForm();
-    onClose();
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>Nueva mascota</Text>
-
-          <TouchableOpacity style={styles.photoPicker} onPress={handlePickPhoto}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Camera size={22} color={Colors.primary} />
-              </View>
-            )}
-            <Text style={styles.photoPickerText}>
-              {photoUri ? "Cambiar foto" : "Agregar foto (opcional)"}
-            </Text>
-          </TouchableOpacity>
-
-          <Input label="Nombre" placeholder="Ej. Firulais" value={name} onChangeText={setName} />
-          <Input
-            label="Raza (opcional)"
-            placeholder="Ej. Labrador"
-            value={breed}
-            onChangeText={setBreed}
-          />
-
-          <Text style={styles.fieldLabel}>Especie</Text>
-          <View style={styles.chipsRow}>
-            {SPECIES_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={[styles.chip, species === option && styles.chipSelected]}
-                onPress={() => setSpecies(option)}
-              >
-                <Text style={[styles.chipText, species === option && styles.chipTextSelected]}>
-                  {SPECIES_LABELS[option]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {species === "Other" ? (
-            <Input
-              label="¿Cuál especie?"
-              placeholder="Ej. Conejo, Hamster, Ave"
-              value={customSpecies}
-              onChangeText={setCustomSpecies}
-            />
-          ) : null}
-
-          <Input
-            label="Fecha de nacimiento (opcional, AAAA-MM-DD)"
-            placeholder="2022-05-10"
-            value={birthDateInput}
-            onChangeText={setBirthDateInput}
-            keyboardType="numbers-and-punctuation"
-          />
-
-          <Input
-            label="Peso en kg (opcional)"
-            placeholder="8.5"
-            value={weightInput}
-            onChangeText={setWeightInput}
-            keyboardType="decimal-pad"
-          />
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Button label="Guardar" onPress={handleSubmit} style={styles.modalButton} />
-          <Button
-            label="Cancelar"
-            variant="outline"
-            onPress={() => {
-              resetForm();
-              onClose();
-            }}
-          />
-        </View>
-      </View>
-    </Modal>
   );
 }
 
@@ -404,6 +246,49 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.md,
   },
+  misMascotasButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.lg,
+  },
+  misMascotasButtonText: {
+    color: Colors.white,
+    fontWeight: "700",
+    fontSize: FontSize.md,
+  },
+  currentPetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  currentPetAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  currentPetAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  currentPetAvatarText: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  currentPetText: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+  },
   heroCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -456,22 +341,6 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "700",
     fontSize: FontSize.xs,
-  },
-  misMascotasButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: Spacing.xs,
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    marginTop: Spacing.sm,
-  },
-  misMascotasButtonText: {
-    color: Colors.primary,
-    fontWeight: "700",
-    fontSize: FontSize.sm,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -530,69 +399,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.md,
-  },
-  modalButton: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
-  errorText: {
-    color: Colors.danger,
-    fontSize: FontSize.sm,
-    marginBottom: Spacing.sm,
-  },
-  photoPicker: {
-    alignItems: "center",
-    marginBottom: Spacing.md,
-  },
-  photoPreview: {
-    width: 72,
-    height: 72,
-    borderRadius: Radius.full,
-  },
-  photoPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  photoPickerText: {
-    marginTop: Spacing.xs,
-    color: Colors.primary,
-    fontSize: FontSize.xs,
-    fontWeight: "600",
-  },
-  fieldLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: Spacing.xs,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
-  chip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  chipSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  chipText: {
-    color: Colors.text,
-    fontSize: FontSize.sm,
-  },
-  chipTextSelected: {
-    color: Colors.white,
-    fontWeight: "600",
   },
   petRow: {
     paddingVertical: Spacing.sm,
