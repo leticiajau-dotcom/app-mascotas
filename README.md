@@ -46,7 +46,8 @@ src/
 ├── navigation/     # TabNavigator (4 tabs), AppNavigator (Auth vs Main)
 ├── screens/
 │   ├── auth/       # LoginScreen (login + registro)
-│   ├── home/       # DashboardScreen (hero card + agenda del día + FAB), AddEventModal
+│   ├── home/       # DashboardScreen (saludo, hero card, agenda del día,
+│   │               #   botón "Mis mascotas" + FAB), AddEventModal
 │   ├── medical/    # MedicalHistoryScreen (Vacunas / Visitas Médicas / Galería de Estudios)
 │   ├── store/      # StoreScreen (catálogo placeholder + recomendados con affiliateUrl)
 │   └── profile/    # ProfileScreen (ficha técnica + emergencia + llamada rápida)

@@ -24,9 +24,19 @@ import { getSpeciesLabel, formatWeight } from "@/utils/formatters";
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { selectedPet, selectedPetId } = usePets();
-  const { pets, emergencyInfo, saveEmergencyInfo, selectPet, setPetActive, updatePet } =
-    usePetContext();
+  const {
+    pets,
+    emergencyInfo,
+    saveEmergencyInfo,
+    selectPet,
+    setPetActive,
+    updatePet,
+    displayName,
+    saveDisplayName,
+  } = usePetContext();
 
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
   const [vetName, setVetName] = useState("");
@@ -35,6 +45,10 @@ export default function ProfileScreen() {
   const [emergencyClinicPhone, setEmergencyClinicPhone] = useState("");
   const [allergies, setAllergies] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setNameInput(displayName ?? "");
+  }, [displayName]);
 
   useEffect(() => {
     if (!emergencyInfo) return;
@@ -46,6 +60,15 @@ export default function ProfileScreen() {
     setEmergencyClinicPhone(emergencyInfo.emergencyClinicPhone ?? "");
     setAllergies(emergencyInfo.allergies ?? "");
   }, [emergencyInfo]);
+
+  async function handleSaveName() {
+    setSavingName(true);
+    try {
+      await saveDisplayName(nameInput);
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   // Mascotas activas primero, luego las dadas de baja.
   const sortedPets = [...pets].sort((a, b) => Number(b.active) - Number(a.active));
@@ -121,6 +144,21 @@ export default function ProfileScreen() {
         <Card style={styles.card}>
           <Text style={styles.cardLabel}>Cuenta</Text>
           <Text style={styles.accountEmail}>{user?.email ?? "Invitado"}</Text>
+
+          <Input
+            label="Nombre (opcional)"
+            placeholder="Ej. María"
+            value={nameInput}
+            onChangeText={setNameInput}
+          />
+          <Button
+            label="Guardar nombre"
+            variant="outline"
+            onPress={handleSaveName}
+            loading={savingName}
+            style={styles.saveNameButton}
+          />
+
           <Button
             label="Cerrar sesión"
             variant="outline"
@@ -424,6 +462,9 @@ const styles = StyleSheet.create({
   notesInput: {
     minHeight: 70,
     textAlignVertical: "top",
+  },
+  saveNameButton: {
+    marginBottom: Spacing.md,
   },
   signOutButton: {
     marginTop: Spacing.md,

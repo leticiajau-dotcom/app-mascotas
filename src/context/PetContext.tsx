@@ -22,7 +22,9 @@ interface PetContextValue {
   events: MedicalEvent[];
   studies: StudyFile[];
   emergencyInfo: EmergencyInfo | null;
+  displayName: string | null;
   loading: boolean;
+  saveDisplayName: (name: string) => Promise<void>;
   selectPet: (petId: string) => void;
   addPet: (input: NewPetInput) => Promise<Pet>;
   updatePet: (petId: string, updates: Partial<NewPetInput>) => Promise<void>;
@@ -53,6 +55,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
   const [events, setEvents] = useState<MedicalEvent[]>([]);
   const [studies, setStudies] = useState<StudyFile[]>([]);
   const [emergencyInfo, setEmergencyInfo] = useState<EmergencyInfo | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [selectedPetId, setSelectedPetId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,12 +65,14 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     async function load() {
-      const [loadedPets, loadedEvents, loadedStudies, loadedEmergencyInfo] = await Promise.all([
-        storage.readJSON<Pet[]>(storage.keys.pets(userId), []),
-        storage.readJSON<MedicalEvent[]>(storage.keys.events(userId), []),
-        storage.readJSON<StudyFile[]>(storage.keys.studies(userId), []),
-        storage.readJSON<EmergencyInfo | null>(storage.keys.emergencyInfo(userId), null),
-      ]);
+      const [loadedPets, loadedEvents, loadedStudies, loadedEmergencyInfo, loadedDisplayName] =
+        await Promise.all([
+          storage.readJSON<Pet[]>(storage.keys.pets(userId), []),
+          storage.readJSON<MedicalEvent[]>(storage.keys.events(userId), []),
+          storage.readJSON<StudyFile[]>(storage.keys.studies(userId), []),
+          storage.readJSON<EmergencyInfo | null>(storage.keys.emergencyInfo(userId), null),
+          storage.readJSON<string | null>(storage.keys.displayName(userId), null),
+        ]);
 
       if (!isMounted) return;
       // Compatibilidad hacia atrás: mascotas guardadas antes de sumar el
@@ -77,6 +82,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       setEvents(loadedEvents);
       setStudies(loadedStudies);
       setEmergencyInfo(loadedEmergencyInfo);
+      setDisplayName(loadedDisplayName);
       setSelectedPetId(
         (current) =>
           current ??
@@ -279,6 +285,15 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
     [userId]
   );
 
+  const saveDisplayName = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      setDisplayName(trimmed || null);
+      await storage.writeJSON(storage.keys.displayName(userId), trimmed || null);
+    },
+    [userId]
+  );
+
   const selectedPet = useMemo(
     () => pets.find((pet) => pet.id === selectedPetId) ?? null,
     [pets, selectedPetId]
@@ -295,7 +310,9 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       events,
       studies,
       emergencyInfo,
+      displayName,
       loading,
+      saveDisplayName,
       selectPet,
       addPet,
       updatePet,
@@ -319,7 +336,9 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       events,
       studies,
       emergencyInfo,
+      displayName,
       loading,
+      saveDisplayName,
       selectPet,
       addPet,
       updatePet,

@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CalendarClock, Camera, Plus } from "lucide-react-native";
+import { CalendarClock, Camera, PawPrint, Plus } from "lucide-react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import Button from "@/components/common/Button";
 import Card from "@/components/common/Card";
@@ -19,12 +19,14 @@ import PetHeader from "@/components/pet/Header";
 import EventCard from "@/components/pet/EventCard";
 import Colors from "@/constants/Colors";
 import { FontSize, Radius, Spacing } from "@/constants/Theme";
+import { useAuth } from "@/context/AuthContext";
+import { usePetContext } from "@/context/PetContext";
 import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
 import { pickImageFromLibrary } from "@/services/mediaService";
-import { PetSpecies } from "@/types/pet";
-import { SPECIES_LABELS, getSpeciesLabel } from "@/utils/formatters";
-import { formatDate, isToday, parseDateInput } from "@/utils/dateUtils";
+import { Pet, PetSpecies } from "@/types/pet";
+import { SPECIES_LABELS, getSpeciesLabel, initials } from "@/utils/formatters";
+import { calculateAge, formatDate, isToday, parseDateInput } from "@/utils/dateUtils";
 import { HomeStackParamList } from "@/types/navigation";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
@@ -32,13 +34,16 @@ type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
 const SPECIES_OPTIONS: PetSpecies[] = ["Dog", "Cat", "Other"];
 
 export default function DashboardScreen({ navigation }: Props) {
-  const { pets, activePets, selectedPet, selectPet, addPet } = usePets();
+  const { user } = useAuth();
+  const { displayName } = usePetContext();
+  const { pets, activePets, selectedPet, selectedPetId, selectPet, addPet } = usePets();
   const { upcoming, toggleEventComplete } = useEvents(selectedPet?.id);
   const [showAddPet, setShowAddPet] = useState(false);
   const [showPetPicker, setShowPetPicker] = useState(false);
 
   const nextEvent = upcoming[0] ?? null;
   const todayEvents = useMemo(() => upcoming.filter((event) => isToday(event.date)), [upcoming]);
+  const greetingName = displayName || user?.email || "";
 
   function openEvent(eventId?: string) {
     if (!selectedPet) return;
@@ -48,16 +53,21 @@ export default function DashboardScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.greeting}>Hola 👋</Text>
+        <Text style={styles.greeting}>
+          Hola{greetingName ? `, ${greetingName}` : ""} 👋
+        </Text>
 
         <Card>
           <PetHeader
             pet={selectedPet}
-            onPress={
-              activePets.length > 0 ? () => setShowPetPicker(true) : () => setShowAddPet(true)
-            }
+            onPress={activePets.length === 0 ? () => setShowAddPet(true) : undefined}
           />
         </Card>
+
+        <TouchableOpacity style={styles.misMascotasButton} onPress={() => setShowPetPicker(true)}>
+          <PawPrint size={16} color={Colors.primary} />
+          <Text style={styles.misMascotasButtonText}>Mis mascotas</Text>
+        </TouchableOpacity>
 
         {selectedPet ? (
           <>
@@ -147,6 +157,7 @@ export default function DashboardScreen({ navigation }: Props) {
       <PetPickerModal
         visible={showPetPicker}
         pets={activePets}
+        selectedPetId={selectedPetId}
         onSelect={(id) => {
           selectPet(id);
           setShowPetPicker(false);
@@ -329,12 +340,14 @@ function AddPetModal({
 function PetPickerModal({
   visible,
   pets,
+  selectedPetId,
   onSelect,
   onAddNew,
   onClose,
 }: {
   visible: boolean;
-  pets: ReturnType<typeof usePets>["pets"];
+  pets: Pet[];
+  selectedPetId: string | null;
   onSelect: (id: string) => void;
   onAddNew: () => void;
   onClose: () => void;
@@ -343,17 +356,38 @@ function PetPickerModal({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalSheet}>
-          <Text style={styles.modalTitle}>Tus mascotas</Text>
-          <FlatList
-            data={pets}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.petRow} onPress={() => onSelect(item.id)}>
-                <Text style={styles.petRowText}>{item.name}</Text>
-                <Text style={styles.petRowSubtext}>{getSpeciesLabel(item)}</Text>
-              </TouchableOpacity>
-            )}
-          />
+          <Text style={styles.modalTitle}>Mis mascotas</Text>
+          {pets.length === 0 ? (
+            <Text style={styles.emptyText}>Todavía no tenés mascotas activas.</Text>
+          ) : (
+            <FlatList
+              data={pets}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.petRow} onPress={() => onSelect(item.id)}>
+                  <View style={styles.petRowAvatar}>
+                    {item.photoUrl ? (
+                      <Image source={{ uri: item.photoUrl }} style={styles.petRowAvatarImage} />
+                    ) : (
+                      <Text style={styles.petRowAvatarText}>{initials(item.name)}</Text>
+                    )}
+                  </View>
+                  <View style={styles.petRowInfo}>
+                    <Text style={styles.petRowText}>{item.name}</Text>
+                    <Text style={styles.petRowSubtext}>
+                      {getSpeciesLabel(item)}
+                      {item.breed ? ` · ${item.breed}` : ""} · {calculateAge(item.birthDate)}
+                    </Text>
+                  </View>
+                  {item.id === selectedPetId ? (
+                    <View style={styles.petRowCurrentBadge}>
+                      <Text style={styles.petRowCurrentBadgeText}>Actual</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              )}
+            />
+          )}
           <Button label="Agregar otra mascota" variant="outline" onPress={onAddNew} />
         </View>
       </View>
@@ -422,6 +456,22 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "700",
     fontSize: FontSize.xs,
+  },
+  misMascotasButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: Spacing.xs,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
+    marginTop: Spacing.sm,
+  },
+  misMascotasButtonText: {
+    color: Colors.primary,
+    fontWeight: "700",
+    fontSize: FontSize.sm,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -549,7 +599,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  petRowAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  petRowAvatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  petRowAvatarText: {
+    color: Colors.white,
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+  },
+  petRowInfo: {
+    flex: 1,
   },
   petRowText: {
     fontSize: FontSize.md,
@@ -559,5 +631,17 @@ const styles = StyleSheet.create({
   petRowSubtext: {
     fontSize: FontSize.sm,
     color: Colors.textMuted,
+    marginTop: 2,
+  },
+  petRowCurrentBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+  },
+  petRowCurrentBadgeText: {
+    color: Colors.primary,
+    fontSize: FontSize.xs,
+    fontWeight: "700",
   },
 });

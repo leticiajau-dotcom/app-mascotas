@@ -15,6 +15,7 @@ const KEYS = {
   events: (userId: string) => `@petcare/${userId}/events`,
   emergencyInfo: (userId: string) => `@petcare/${userId}/emergencyInfo`,
   studies: (userId: string) => `@petcare/${userId}/studies`,
+  displayName: (userId: string) => `@petcare/${userId}/displayName`,
 } as const;
 
 async function readJSON<T>(key: string, fallback: T): Promise<T> {
@@ -47,6 +48,7 @@ export const storage = {
       KEYS.events(userId),
       KEYS.emergencyInfo(userId),
       KEYS.studies(userId),
+      KEYS.displayName(userId),
     ]);
   },
 };
