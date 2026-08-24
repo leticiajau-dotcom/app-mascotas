@@ -7,6 +7,9 @@ export interface Pet {
   weight?: number;
   chipNumber?: string;
   photoUrl?: string;
+  /** false = mascota dada de baja (falleció / ya no está con el dueño).
+   * Se conserva junto con todo su historial en vez de borrarla. */
+  active: boolean;
 }
 
 export type PetSpecies = Pet["species"];
@@ -25,7 +28,7 @@ export interface EmergencyInfo {
   bloodType?: string;
 }
 
-export type NewPetInput = Omit<Pet, "id">;
+export type NewPetInput = Omit<Pet, "id" | "active">;
 
 /** Foto de un estudio/análisis (radiografía, laboratorio, etc.) de una mascota. */
 export interface StudyPhoto {

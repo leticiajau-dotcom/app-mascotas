@@ -6,8 +6,29 @@ import { usePetContext } from "@/context/PetContext";
  * desacoplados del provider concreto.
  */
 export function usePets() {
-  const { pets, selectedPet, selectedPetId, selectPet, addPet, updatePet, deletePet, loading } =
-    usePetContext();
+  const {
+    pets,
+    activePets,
+    selectedPet,
+    selectedPetId,
+    selectPet,
+    addPet,
+    updatePet,
+    setPetActive,
+    deletePet,
+    loading,
+  } = usePetContext();
 
-  return { pets, selectedPet, selectedPetId, selectPet, addPet, updatePet, deletePet, loading };
+  return {
+    pets,
+    activePets,
+    selectedPet,
+    selectedPetId,
+    selectPet,
+    addPet,
+    updatePet,
+    setPetActive,
+    deletePet,
+    loading,
+  };
 }

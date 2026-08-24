@@ -11,18 +11,19 @@ import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useAuth } from "@/context/AuthContext";
 import { usePetContext } from "@/context/PetContext";
 import { usePets } from "@/hooks/usePets";
+import { Pet } from "@/types/pet";
 import { calculateAge, formatDateShort } from "@/utils/dateUtils";
 import { SPECIES_LABELS, formatWeight } from "@/utils/formatters";
 
 /**
- * Perfil de la mascota + tarjeta de emergencia: datos que un cuidador
- * necesitaría en una urgencia (contacto del dueño, veterinario, alergias)
- * y accesos directos de llamada rápida.
+ * Perfil: datos de la cuenta, ficha de cada mascota (con alta/baja) y la
+ * tarjeta de emergencia de la mascota seleccionada, con accesos directos
+ * de llamada rápida.
  */
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const { selectedPet } = usePets();
-  const { emergencyInfo, saveEmergencyInfo } = usePetContext();
+  const { selectedPet, selectedPetId } = usePets();
+  const { pets, emergencyInfo, saveEmergencyInfo, selectPet, setPetActive } = usePetContext();
 
   const [ownerName, setOwnerName] = useState("");
   const [ownerPhone, setOwnerPhone] = useState("");
@@ -43,6 +44,9 @@ export default function ProfileScreen() {
     setEmergencyClinicPhone(emergencyInfo.emergencyClinicPhone ?? "");
     setAllergies(emergencyInfo.allergies ?? "");
   }, [emergencyInfo]);
+
+  // Mascotas activas primero, luego las dadas de baja.
+  const sortedPets = [...pets].sort((a, b) => Number(b.active) - Number(a.active));
 
   async function handleSaveEmergencyInfo() {
     if (!selectedPet) return;
@@ -76,6 +80,17 @@ export default function ProfileScreen() {
     ]);
   }
 
+  function handleDeactivate(pet: Pet) {
+    Alert.alert(
+      "Dar de baja",
+      `¿Seguro que deseas dar de baja a ${pet.name}? Se conserva todo su historial médico, pero dejará de aparecer como mascota activa.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Dar de baja", style: "destructive", onPress: () => setPetActive(pet.id, false) },
+      ]
+    );
+  }
+
   function callNumber(phone: string) {
     Linking.openURL(`tel:${phone}`);
   }
@@ -87,27 +102,85 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Perfil</Text>
 
+        <Text style={styles.sectionTitle}>Usuario</Text>
         <Card style={styles.card}>
           <Text style={styles.cardLabel}>Cuenta</Text>
           <Text style={styles.accountEmail}>{user?.email ?? "Invitado"}</Text>
+          <Button
+            label="Cerrar sesión"
+            variant="outline"
+            icon={<LogOut size={18} color={Colors.primary} />}
+            onPress={handleSignOut}
+            style={styles.signOutButton}
+          />
         </Card>
 
-        {selectedPet ? (
+        <Text style={styles.sectionTitle}>Mascotas</Text>
+        {sortedPets.length === 0 ? (
           <Card style={styles.card}>
-            <PetHeader pet={selectedPet} />
-            <View style={styles.petDetailsGrid}>
-              <DetailItem label="Especie" value={SPECIES_LABELS[selectedPet.species]} />
-              <DetailItem label="Edad" value={calculateAge(selectedPet.birthDate)} />
-              <DetailItem label="Peso" value={formatWeight(selectedPet.weight)} />
-              <DetailItem label="Nacimiento" value={formatDateShort(selectedPet.birthDate)} />
-              <DetailItem label="Raza" value={selectedPet.breed ?? "-"} />
-              <DetailItem label="Microchip" value={selectedPet.chipNumber ?? "-"} />
-            </View>
+            <Text style={styles.emptyText}>
+              Agrega una mascota desde el inicio para ver su ficha acá.
+            </Text>
           </Card>
         ) : (
-          <Card style={styles.card}>
-            <Text style={styles.emptyText}>Agrega una mascota desde el inicio para ver su perfil.</Text>
-          </Card>
+          sortedPets.map((pet) => (
+            <Card key={pet.id} style={styles.card}>
+              <View style={styles.petCardHeader}>
+                <View style={styles.petHeaderFlex}>
+                  <PetHeader pet={pet} />
+                </View>
+                {pet.id === selectedPetId ? (
+                  <View style={styles.currentBadge}>
+                    <Text style={styles.currentBadgeText}>Actual</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {!pet.active ? (
+                <View style={styles.inactiveBadge}>
+                  <Text style={styles.inactiveBadgeText}>Dada de baja</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.petDetailsGrid}>
+                <DetailItem label="Especie" value={SPECIES_LABELS[pet.species]} />
+                <DetailItem label="Edad" value={calculateAge(pet.birthDate)} />
+                <DetailItem label="Peso" value={formatWeight(pet.weight)} />
+                <DetailItem label="Nacimiento" value={formatDateShort(pet.birthDate)} />
+                <DetailItem label="Raza" value={pet.breed ?? "-"} />
+                <DetailItem label="Microchip" value={pet.chipNumber ?? "-"} />
+              </View>
+
+              <View style={styles.petActionsRow}>
+                {pet.active && pet.id !== selectedPetId ? (
+                  <Button
+                    label="Seleccionar"
+                    variant="outline"
+                    fullWidth={false}
+                    onPress={() => selectPet(pet.id)}
+                    style={styles.petActionButton}
+                  />
+                ) : null}
+                {pet.active ? (
+                  <Button
+                    label="Dar de baja"
+                    variant="danger"
+                    fullWidth={false}
+                    onPress={() => handleDeactivate(pet)}
+                    style={styles.petActionButton}
+                  />
+                ) : (
+                  <Button
+                    label="Reactivar"
+                    variant="outline"
+                    fullWidth={false}
+                    onPress={() => setPetActive(pet.id, true)}
+                    style={styles.petActionButton}
+                  />
+                )}
+              </View>
+            </Card>
+          ))
         )}
 
         {selectedPet && hasQuickCall ? (
@@ -144,7 +217,10 @@ export default function ProfileScreen() {
           <Card style={styles.card}>
             <View style={styles.emergencyHeader}>
               <ShieldAlert size={20} color={Colors.danger} />
-              <Text style={styles.cardLabel}>Información de emergencia</Text>
+              <View>
+                <Text style={styles.cardLabel}>Información de emergencia</Text>
+                <Text style={styles.emergencySubtitle}>Mascota: {selectedPet.name}</Text>
+              </View>
             </View>
 
             <Input label="Nombre del dueño" value={ownerName} onChangeText={setOwnerName} />
@@ -154,11 +230,7 @@ export default function ProfileScreen() {
               onChangeText={setOwnerPhone}
               keyboardType="phone-pad"
             />
-            <Input
-              label="Veterinario de cabecera"
-              value={vetName}
-              onChangeText={setVetName}
-            />
+            <Input label="Veterinario de cabecera" value={vetName} onChangeText={setVetName} />
             <Input
               label="Teléfono del veterinario"
               value={vetPhone}
@@ -192,14 +264,6 @@ export default function ProfileScreen() {
             />
           </Card>
         ) : null}
-
-        <Button
-          label="Cerrar sesión"
-          variant="outline"
-          icon={<LogOut size={18} color={Colors.primary} />}
-          onPress={handleSignOut}
-          style={styles.signOutButton}
-        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -223,6 +287,13 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.md,
   },
+  sectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    color: Colors.text,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
   card: { marginBottom: Spacing.md },
   cardLabel: {
     fontSize: FontSize.sm,
@@ -234,6 +305,38 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: Colors.text,
     marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
+  petCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  petHeaderFlex: {
+    flex: 1,
+  },
+  currentBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+  },
+  currentBadgeText: {
+    color: Colors.primary,
+    fontSize: FontSize.xs,
+    fontWeight: "700",
+  },
+  inactiveBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: Colors.dangerLight,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    marginTop: Spacing.xs,
+  },
+  inactiveBadgeText: {
+    color: Colors.danger,
+    fontSize: FontSize.xs,
+    fontWeight: "700",
   },
   petDetailsGrid: {
     flexDirection: "row",
@@ -252,6 +355,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
     marginTop: 2,
+  },
+  petActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  petActionButton: {
+    paddingHorizontal: Spacing.md,
   },
   quickCallRow: {
     flexDirection: "row",
@@ -282,12 +394,17 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     marginBottom: Spacing.md,
   },
+  emergencySubtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
   notesInput: {
     minHeight: 70,
     textAlignVertical: "top",
   },
   signOutButton: {
-    marginTop: Spacing.sm,
+    marginTop: Spacing.md,
   },
   emptyText: {
     color: Colors.textMuted,

@@ -9,20 +9,9 @@ import { FontSize, Radius, Spacing } from "@/constants/Theme";
 import { useEvents } from "@/hooks/useEvents";
 import { EVENT_CATEGORIES, EventCategory } from "@/types/event";
 import { HomeStackParamList } from "@/types/navigation";
+import { parseDateInput, toDateInputValue } from "@/utils/dateUtils";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "AddEventModal">;
-
-function toDateInputValue(iso: string): string {
-  return iso.slice(0, 10);
-}
-
-function parseDateInput(value: string): Date | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
-  if (!match) return null;
-  const [, year, month, day] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 function isValidTime(value: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value.trim());

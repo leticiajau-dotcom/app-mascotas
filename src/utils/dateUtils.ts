@@ -13,6 +13,20 @@ const MONTHS_ES = [
   "diciembre",
 ];
 
+/** Recorta un ISO string a su parte "AAAA-MM-DD", para precargar un input de fecha. */
+export function toDateInputValue(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+/** Parsea un input de fecha en formato "AAAA-MM-DD"; null si no es válido. */
+export function parseDateInput(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function formatDate(isoDate: string | undefined): string {
   if (!isoDate) return "Sin fecha";
   const date = new Date(isoDate);
@@ -78,8 +92,18 @@ export function isUpcoming(isoDate: string, withinDays = 30): boolean {
   return diff >= 0 && diff <= withinDays * 24 * 60 * 60 * 1000;
 }
 
+/**
+ * True si `isoDate` es de un día calendario anterior a hoy. Se compara por
+ * día, no por instante exacto: un evento "de hoy" sin hora específica (que
+ * internamente se guarda a medianoche) no debe verse "Vencido" apenas pasa
+ * la medianoche — recién al otro día.
+ */
 export function isOverdue(isoDate: string): boolean {
-  return new Date(isoDate).getTime() < Date.now();
+  const target = new Date(isoDate);
+  const now = new Date();
+  const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return targetDay.getTime() < today.getTime();
 }
 
 /** True si `isoDate` cae en el mismo día calendario que hoy (hora local). */

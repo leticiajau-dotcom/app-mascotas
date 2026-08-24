@@ -16,6 +16,7 @@ import { useAuth } from "./AuthContext";
 
 interface PetContextValue {
   pets: Pet[];
+  activePets: Pet[];
   selectedPet: Pet | null;
   selectedPetId: string | null;
   events: MedicalEvent[];
@@ -25,6 +26,7 @@ interface PetContextValue {
   selectPet: (petId: string) => void;
   addPet: (input: NewPetInput) => Promise<Pet>;
   updatePet: (petId: string, updates: Partial<NewPetInput>) => Promise<void>;
+  setPetActive: (petId: string, active: boolean) => Promise<void>;
   deletePet: (petId: string) => Promise<void>;
   eventsForPet: (petId: string) => MedicalEvent[];
   addEvent: (input: NewMedicalEventInput, reminderOffsetDays?: number) => Promise<MedicalEvent>;
@@ -68,11 +70,20 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (!isMounted) return;
-      setPets(loadedPets);
+      // Compatibilidad hacia atrás: mascotas guardadas antes de sumar el
+      // campo `active` se tratan como activas.
+      const normalizedPets = loadedPets.map((pet) => ({ ...pet, active: pet.active ?? true }));
+      setPets(normalizedPets);
       setEvents(loadedEvents);
       setStudies(loadedStudies);
       setEmergencyInfo(loadedEmergencyInfo);
-      setSelectedPetId((current) => current ?? loadedPets[0]?.id ?? null);
+      setSelectedPetId(
+        (current) =>
+          current ??
+          normalizedPets.find((pet) => pet.active)?.id ??
+          normalizedPets[0]?.id ??
+          null
+      );
       setLoading(false);
     }
 
@@ -115,6 +126,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       const pet: Pet = {
         ...input,
         id: generateId(),
+        active: true,
       };
       await persistPets([...pets, pet]);
       setSelectedPetId((current) => current ?? pet.id);
@@ -129,6 +141,26 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       await persistPets(next);
     },
     [pets, persistPets]
+  );
+
+  const setPetActive = useCallback(
+    async (petId: string, active: boolean) => {
+      const next = pets.map((pet) => (pet.id === petId ? { ...pet, active } : pet));
+      await persistPets(next);
+
+      if (!active) {
+        // Al dar de baja, se cancelan los recordatorios pendientes de esa
+        // mascota (el historial de eventos y estudios se conserva).
+        const eventsToCancel = events.filter((event) => event.petId === petId && !event.completed);
+        await Promise.all(eventsToCancel.map((event) => cancelPetReminder(event.id)));
+
+        setSelectedPetId((current) => {
+          if (current !== petId) return current;
+          return next.find((pet) => pet.active)?.id ?? null;
+        });
+      }
+    },
+    [pets, events, persistPets]
   );
 
   const deletePet = useCallback(
@@ -252,9 +284,12 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
     [pets, selectedPetId]
   );
 
+  const activePets = useMemo(() => pets.filter((pet) => pet.active), [pets]);
+
   const value = useMemo<PetContextValue>(
     () => ({
       pets,
+      activePets,
       selectedPet,
       selectedPetId,
       events,
@@ -264,6 +299,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       selectPet,
       addPet,
       updatePet,
+      setPetActive,
       deletePet,
       eventsForPet,
       addEvent,
@@ -277,6 +313,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       pets,
+      activePets,
       selectedPet,
       selectedPetId,
       events,
@@ -286,6 +323,7 @@ export function PetProvider({ children }: { children: React.ReactNode }) {
       selectPet,
       addPet,
       updatePet,
+      setPetActive,
       deletePet,
       eventsForPet,
       addEvent,

@@ -22,7 +22,7 @@ import { usePets } from "@/hooks/usePets";
 import { useEvents } from "@/hooks/useEvents";
 import { PetSpecies } from "@/types/pet";
 import { SPECIES_LABELS } from "@/utils/formatters";
-import { formatDate, isToday } from "@/utils/dateUtils";
+import { formatDate, isToday, parseDateInput } from "@/utils/dateUtils";
 import { HomeStackParamList } from "@/types/navigation";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
@@ -30,7 +30,7 @@ type Props = NativeStackScreenProps<HomeStackParamList, "Dashboard">;
 const SPECIES_OPTIONS: PetSpecies[] = ["Dog", "Cat", "Other"];
 
 export default function DashboardScreen({ navigation }: Props) {
-  const { pets, selectedPet, selectPet, addPet } = usePets();
+  const { pets, activePets, selectedPet, selectPet, addPet } = usePets();
   const { upcoming, toggleEventComplete } = useEvents(selectedPet?.id);
   const [showAddPet, setShowAddPet] = useState(false);
   const [showPetPicker, setShowPetPicker] = useState(false);
@@ -51,7 +51,9 @@ export default function DashboardScreen({ navigation }: Props) {
         <Card>
           <PetHeader
             pet={selectedPet}
-            onPress={pets.length > 0 ? () => setShowPetPicker(true) : () => setShowAddPet(true)}
+            onPress={
+              activePets.length > 0 ? () => setShowPetPicker(true) : () => setShowAddPet(true)
+            }
           />
         </Card>
 
@@ -115,8 +117,9 @@ export default function DashboardScreen({ navigation }: Props) {
         ) : (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyText}>
-              Aún no tienes mascotas registradas. Toca la tarjeta de arriba para agregar la
-              primera.
+              {pets.length > 0
+                ? "No tenés mascotas activas. Reactivá alguna desde tu Perfil o agregá una nueva."
+                : "Aún no tienes mascotas registradas. Toca la tarjeta de arriba para agregar la primera."}
             </Text>
             <Button
               label="Agregar mascota"
@@ -141,7 +144,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
       <PetPickerModal
         visible={showPetPicker}
-        pets={pets}
+        pets={activePets}
         onSelect={(id) => {
           selectPet(id);
           setShowPetPicker(false);
@@ -168,17 +171,51 @@ function AddPetModal({
   const [name, setName] = useState("");
   const [species, setSpecies] = useState<PetSpecies>("Dog");
   const [breed, setBreed] = useState("");
+  const [birthDateInput, setBirthDateInput] = useState("");
+  const [weightInput, setWeightInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function resetForm() {
+    setName("");
+    setBreed("");
+    setSpecies("Dog");
+    setBirthDateInput("");
+    setWeightInput("");
+    setError(null);
+  }
 
   async function handleSubmit() {
     if (!name.trim()) return;
+
+    let birthDate: string | undefined;
+    if (birthDateInput.trim()) {
+      const parsed = parseDateInput(birthDateInput);
+      if (!parsed) {
+        setError("La fecha de nacimiento debe tener el formato AAAA-MM-DD.");
+        return;
+      }
+      birthDate = parsed.toISOString();
+    }
+
+    let weight: number | undefined;
+    if (weightInput.trim()) {
+      const parsedWeight = Number(weightInput.replace(",", "."));
+      if (Number.isNaN(parsedWeight) || parsedWeight <= 0) {
+        setError("El peso debe ser un número válido en kg.");
+        return;
+      }
+      weight = parsedWeight;
+    }
+
+    setError(null);
     await onSubmit({
       name: name.trim(),
       species,
       breed: breed.trim() || undefined,
+      birthDate,
+      weight,
     });
-    setName("");
-    setBreed("");
-    setSpecies("Dog");
+    resetForm();
     onClose();
   }
 
@@ -210,8 +247,33 @@ function AddPetModal({
             ))}
           </View>
 
+          <Input
+            label="Fecha de nacimiento (opcional, AAAA-MM-DD)"
+            placeholder="2022-05-10"
+            value={birthDateInput}
+            onChangeText={setBirthDateInput}
+            keyboardType="numbers-and-punctuation"
+          />
+
+          <Input
+            label="Peso en kg (opcional)"
+            placeholder="8.5"
+            value={weightInput}
+            onChangeText={setWeightInput}
+            keyboardType="decimal-pad"
+          />
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           <Button label="Guardar" onPress={handleSubmit} style={styles.modalButton} />
-          <Button label="Cancelar" variant="outline" onPress={onClose} />
+          <Button
+            label="Cancelar"
+            variant="outline"
+            onPress={() => {
+              resetForm();
+              onClose();
+            }}
+          />
         </View>
       </View>
     </Modal>
@@ -376,6 +438,11 @@ const styles = StyleSheet.create({
   modalButton: {
     marginTop: Spacing.sm,
     marginBottom: Spacing.xs,
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: FontSize.sm,
+    marginBottom: Spacing.sm,
   },
   fieldLabel: {
     fontSize: FontSize.sm,
