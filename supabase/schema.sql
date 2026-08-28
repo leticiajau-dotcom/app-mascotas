@@ -1,13 +1,14 @@
--- Esquema de referencia para sincronizar el MVP con Supabase (Postgres).
--- El MVP actual persiste todo localmente vía AsyncStorage (src/api/storage.ts);
--- estas tablas quedan listas para cuando se active la sincronización en la nube
--- usando el cliente de src/api/supabase.ts.
+-- Esquema de la app web (petcare-web): Postgres es la persistencia real de
+-- mascotas/eventos/estudios (ver src/lib/api/*.ts), Supabase Auth maneja el
+-- login. Este archivo es idempotente: se puede volver a correr sin romper
+-- datos existentes (create table if not exists / add column if not exists).
 
 create table if not exists public.pets (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
   species text not null check (species in ('Dog', 'Cat', 'Other')),
+  custom_species text, -- nombre propio cuando species = 'Other' (ej. "Conejo")
   breed text,
   birth_date date,
   weight numeric(5, 2),
@@ -17,6 +18,8 @@ create table if not exists public.pets (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.pets add column if not exists custom_species text;
 
 create table if not exists public.medical_events (
   id uuid primary key default gen_random_uuid(),
@@ -29,9 +32,14 @@ create table if not exists public.medical_events (
   time text,
   completed boolean not null default false,
   affiliate_url text,
+  -- Cada cuántos días se repite (desparasitación, pipeta antipulgas, etc.).
+  -- NULL/0 = no se repite.
+  repeat_interval_days integer,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.medical_events add column if not exists repeat_interval_days integer;
 
 create table if not exists public.emergency_info (
   pet_id uuid primary key references public.pets (id) on delete cascade,

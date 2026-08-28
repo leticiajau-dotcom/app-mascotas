@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/api/supabase";
+import { supabase } from "@/lib/supabaseClient";
 
 interface AuthContextValue {
   session: Session | null;
@@ -18,10 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
     supabase.auth.getSession().then(({ data }) => {
-      if (!isMounted) return;
       setSession(data.session);
       setLoading(false);
     });
@@ -30,39 +27,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(nextSession);
     });
 
-    return () => {
-      isMounted = false;
-      subscription.subscription.unsubscribe();
-    };
+    return () => subscription.subscription.unsubscribe();
   }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      session,
-      user: session?.user ?? null,
-      loading,
-      async signIn(email, password) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        return { error: error?.message ?? null };
-      },
-      async signUp(email, password) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        return { error: error?.message ?? null };
-      },
-      async signOut() {
-        await supabase.auth.signOut();
-      },
-    }),
-    [session, loading]
-  );
+  async function signIn(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message ?? null };
+  }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  async function signUp(email: string, password: string) {
+    const { error } = await supabase.auth.signUp({ email, password });
+    return { error: error?.message ?? null };
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{ session, user: session?.user ?? null, loading, signIn, signUp, signOut }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth debe usarse dentro de un <AuthProvider>");
-  }
+  if (!context) throw new Error("useAuth debe usarse dentro de un <AuthProvider>");
   return context;
 }
